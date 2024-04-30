@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, fmt::Write, fs, hash::Hash, process::exit};
+use std::{collections::HashMap, env, fmt::Write, fs, process::exit};
 
 enum Opcode {
     Mov = 0b100010,
@@ -52,19 +52,21 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     // first arg is just the file to disassemble
-    let file_path = match args.get(0) {
+    let file_path = match args.get(1) {
         Some(file_path) => file_path,
         None => exit(1),
     };
+    println!("Reading file: {:?}", file_path);
 
-    // first arg is just the file to output to
-    let output_file_path = match args.get(1) {
+    // second arg is just the file to output to
+    let output_file_path = match args.get(2) {
         Some(path) => path,
         None => {
             println!("Missing output file path");
             exit(1);
         }
     };
+    println!("Outputting to file {:?}", output_file_path);
 
     let contents = match fs::read(file_path) {
         Ok(contents) => contents,
@@ -84,24 +86,24 @@ fn main() {
         let byte_one_index = 2 * pair_index;
         let byte_two_index = byte_one_index + 1;
 
-        let byte_one = contents
+        let byte_one = *contents
             .get(byte_one_index)
             .expect(&format!("Unable to get byte at index {:?}", byte_one_index));
-        let byte_two = contents
+        let byte_two = *contents
             .get(byte_two_index)
             .expect(&format!("Unable to get byte at index {:?}", byte_two_index));
 
         // First six bits of byte_one is the instruction
         let opcode = (byte_one & 0b11111100) >> 2;
-        let opcode_name = opcode_map
-            .get(&opcode)
-            .expect(&format!("Unable to get opcode for byte {:?}", opcode));
+        let opcode_name = opcode_map.get(&opcode).expect(&format!(
+            "Unable to get opcode for byte at index {:?} valued 0b{:?}",
+            byte_one_index, opcode
+        ));
 
         // mov
         if opcode == (Opcode::Mov as u8) {
             let d_bit = (byte_one & 0b00000010) >> 1;
             let w_bit = byte_one & 0b00000001;
-            let mod_field = (byte_two & 0b11000000) >> 6;
             let reg_field = (byte_two & 0b00111000) >> 3;
             let rm_field = (byte_two & 0b00000111) >> 3;
 
