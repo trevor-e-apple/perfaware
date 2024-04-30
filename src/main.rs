@@ -51,6 +51,8 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
 
+    // arg parsing: (currently assumes "cargo run", so that should be handled at some point)
+
     // first arg is just the file to disassemble
     let file_path = match args.get(1) {
         Some(file_path) => file_path,
@@ -105,7 +107,7 @@ fn main() {
             let d_bit = (byte_one & 0b00000010) >> 1;
             let w_bit = byte_one & 0b00000001;
             let reg_field = (byte_two & 0b00111000) >> 3;
-            let rm_field = (byte_two & 0b00000111) >> 3;
+            let rm_field = byte_two & 0b00000111;
 
             let (from_field, to_field) = if d_bit == 0b0 {
                 (reg_field, rm_field)
@@ -121,7 +123,7 @@ fn main() {
                 .expect("Unable to get register name");
 
             output_buffer
-                .write_str(&format!("{:?} {:?}, {:?}\n", opcode_name, to, from))
+                .write_str(&format!("{} {}, {}\n", opcode_name, to, from))
                 .expect("Unable to write to output buffer");
         } else {
             unimplemented!("Opcode not recognized");
