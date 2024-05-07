@@ -7,6 +7,10 @@ edition = "2021"
 
 [[bin]]
 name = "diffcheck"
-path = "src/diffcheck/main.rs"
+path = "diffcheck/main.rs"
+
+[[bin]]
+name = "test"
+path = "test/main.rs"
 
 [dependencies]
