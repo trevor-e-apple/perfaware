@@ -1,4 +1,8 @@
+mod disassemble;
+
 use std::{env, fs, path::Path, process::Command};
+
+use disassemble::disassemble;
 
 fn run_nasm(path: &str, outpath: &str) {
     if cfg!(target_os = "windows") {
@@ -44,12 +48,15 @@ fn main() {
                 .unwrap()
         };
 
-        println!("{} {}", &original_asm_path, &original_outpath);
-
         // assemble with nasm
         run_nasm(&original_asm_path, &original_outpath);
 
         // disassemble with our disassembler
+        {
+            // read assembler output
+            let contents = fs::read(&original_outpath).unwrap();
+            disassemble(contents);
+        }
 
         // assemble with nasm
         // run_nasm(path, outpath);
