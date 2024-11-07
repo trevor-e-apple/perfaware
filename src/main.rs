@@ -32,14 +32,19 @@ fn main() {
         let original_outpath = {
             let with_extension = dir_entry.file_name().into_string().unwrap();
             let file_name = format!(
-                "{:?}.bin",
-                Path::file_stem(Path::new(&with_extension)).unwrap()
+                "{}.bin",
+                Path::file_stem(Path::new(&with_extension))
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
             );
             Path::join(dir_path, Path::new(&file_name))
                 .into_os_string()
                 .into_string()
                 .unwrap()
         };
+
+        println!("{} {}", &original_asm_path, &original_outpath);
 
         // assemble with nasm
         run_nasm(&original_asm_path, &original_outpath);
