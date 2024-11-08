@@ -55,7 +55,9 @@ fn main() {
         {
             // read assembler output
             let contents = fs::read(&original_outpath).unwrap();
-            disassemble(contents);
+            let disassembly = disassemble(contents);
+            println!("");
+            print!("{}", disassembly);
         }
 
         // assemble with nasm
