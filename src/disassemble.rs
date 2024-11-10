@@ -124,7 +124,7 @@ fn get_register_field(byte: u8, word_byte_field: WordByte) -> Register {
 }
 
 fn get_rm_register_field(byte: u8, word_byte_field: WordByte) -> Register {
-    let register_field = (byte & 0b00000111);
+    let register_field = byte & 0b00000111;
     get_register_enum(register_field, word_byte_field)
 }
 

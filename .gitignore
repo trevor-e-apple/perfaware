@@ -1,2 +1,3 @@
 /target
 /test_asm/*.bin
+/test_asm/*_test_gen.asm
