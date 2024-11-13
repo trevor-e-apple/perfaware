@@ -1,6 +1,7 @@
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone)]
 enum OpCode {
+    RegisterImmediateMov = 0b1011,
     RegisterRegisterMov = 0b100010,
 }
 
@@ -10,57 +11,10 @@ fn get_opcode(byte: u8) -> OpCode {
 
     if opcode == (OpCode::RegisterRegisterMov as u8) {
         OpCode::RegisterRegisterMov
+    } else if opcode == (OpCode::RegisterImmediateMov as u8) {
+        OpCode::RegisterImmediateMov
     } else {
         panic!("Unexpected opcode");
-    }
-}
-
-/// get the direction from the first byte of an instruction. return value is always 0 or 1
-fn get_direction(byte: u8) -> u8 {
-    (byte & 0b00000010) >> 1
-}
-
-#[repr(u8)]
-#[derive(PartialEq, Copy, Clone)]
-enum WordByte {
-    Byte = 0b0,
-    Word = 0b1,
-}
-
-/// get the word-byte field from the first byte of an instruction. return value is always 0 or 1
-fn get_word_byte_field(byte: u8) -> WordByte {
-    let word_byte = byte & 0b00000001;
-    if word_byte == WordByte::Byte as u8 {
-        WordByte::Byte
-    } else if word_byte == WordByte::Word as u8 {
-        WordByte::Word
-    } else {
-        panic!("Unexpected word byte bit value")
-    }
-}
-
-#[repr(u8)]
-#[derive(PartialEq)]
-enum Mode {
-    MemNoDisplacement = 0b00,
-    Mem8Displacement = 0b01,
-    Mem16Displacement = 0b10,
-    Reg = 0b11,
-}
-
-fn get_mode_field(byte: u8) -> Mode {
-    let mode = (byte & 0b11000000) >> 6;
-
-    if mode == (Mode::MemNoDisplacement as u8) {
-        Mode::MemNoDisplacement
-    } else if mode == (Mode::Mem8Displacement as u8) {
-        Mode::Mem8Displacement
-    } else if mode == (Mode::Mem16Displacement as u8) {
-        Mode::Mem16Displacement
-    } else if mode == (Mode::Reg as u8) {
-        Mode::Reg
-    } else {
-        panic!("Unexpected mode field")
     }
 }
 
@@ -107,23 +61,17 @@ const TO_REGISTER: [Register; 16] = [
     Register::Di,
 ];
 
-fn get_register_enum(register_field: u8, word_byte_field: WordByte) -> Register {
-    if word_byte_field == WordByte::Byte {
-        TO_REGISTER[register_field as usize]
-    } else if word_byte_field == WordByte::Word {
-        TO_REGISTER[(register_field as usize) + 8]
-    } else {
-        panic!("Bad")
-    }
+fn get_register_enum(register_field: u8, word_byte_field: u8) -> Register {
+    TO_REGISTER[(register_field as usize) + (8 * (word_byte_field as usize))]
 }
 
 /// get the register field from the second byte
-fn get_register_field(byte: u8, word_byte_field: WordByte) -> Register {
+fn get_register_field(byte: u8, word_byte_field: u8) -> Register {
     let register_field = (byte & 0b00111000) >> 3;
     get_register_enum(register_field, word_byte_field)
 }
 
-fn get_rm_register_field(byte: u8, word_byte_field: WordByte) -> Register {
+fn get_rm_register_field(byte: u8, word_byte_field: u8) -> Register {
     let register_field = byte & 0b00000111;
     get_register_enum(register_field, word_byte_field)
 }
@@ -158,19 +106,48 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
         let first_byte = machine_code[index];
         let opcode = get_opcode(first_byte);
 
-        if opcode == OpCode::RegisterRegisterMov {
-            let direction = get_direction(first_byte);
-            let word_byte = get_word_byte_field(first_byte);
+        match opcode {
+            OpCode::RegisterImmediateMov => {
+                let word_byte = (first_byte & 0b00001000) >> 3;
+                let register_field = first_byte & 0b00000111;
+                let register = get_register_field(register_field, word_byte);
+                let (immediate, bytes_read) = if word_byte == 0 {
+                    let second_byte = machine_code[index + 1];
+                    (second_byte as u16, 1)
+                } else if word_byte == 1 {
+                    let second_byte = machine_code[index + 1];
+                    let third_byte = machine_code[index + 1];
+                    let immediate = ((second_byte as u16) << 8) | (third_byte as u16);
+                    (immediate, 2)
+                } else {
+                    panic!("Bad word byte value");
+                };
 
-            let second_byte = machine_code[index + 1];
-            let mode = get_mode_field(second_byte);
-            let register = get_register_field(second_byte, word_byte);
+                let instruction = format!(
+                    "mov {}, {}\n",
+                    register_to_assembly_name(register),
+                    immediate
+                );
 
-            let instruction = match mode {
-                Mode::MemNoDisplacement => todo!(),
-                Mode::Mem8Displacement => todo!(),
-                Mode::Mem16Displacement => todo!(),
-                Mode::Reg => {
+                result.push_str(&instruction);
+
+                index += bytes_read;
+            }
+            OpCode::RegisterRegisterMov => {
+                let direction = (first_byte & 0b00000010) >> 1;
+                let word_byte = first_byte & 0b00000001;
+
+                let second_byte = machine_code[index + 1];
+                let mode = (second_byte & 0b11000000) >> 6;
+                let register = get_register_field(second_byte, word_byte);
+
+                let instruction = if mode == 0b00 {
+                    todo!()
+                } else if mode == 0b01 {
+                    todo!()
+                } else if mode == 0b10 {
+                    todo!()
+                } else if mode == 0b11 {
                     let second_register = get_rm_register_field(second_byte, word_byte);
 
                     let (src_register, dest_register) = if direction == 0 {
@@ -186,12 +163,13 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                         register_to_assembly_name(dest_register),
                         register_to_assembly_name(src_register)
                     )
-                }
-            };
+                } else {
+                    panic!("Unexpected mode value")
+                };
 
-            result.push_str(&instruction);
-            index += 2;
-        } else {
+                result.push_str(&instruction);
+                index += 2;
+            }
         }
     }
 
