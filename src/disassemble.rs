@@ -183,7 +183,41 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 let register = get_register_enum(register_field, word_byte);
 
                 let instruction = match mode {
-                    Mode::MemNoDisplacement => todo!(),
+                    Mode::MemNoDisplacement => {
+                        let rm_field = second_byte & 0b00000111;
+                        let address_calculation = {
+                            let address_calculation = if rm_field == 0b000 {
+                                "[bx + si]"
+                            } else if rm_field == 0b001 {
+                                "[bx + di]"
+                            } else if rm_field == 0b010 {
+                                "[bp + si]"
+                            } else if rm_field == 0b011 {
+                                "[bp + di]"
+                            } else if rm_field == 0b100 {
+                                "si"
+                            } else if rm_field == 0b101 {
+                                "di"
+                            } else if rm_field == 0b110 {
+                                todo!("Need to get direct address data, get displacement")
+                            } else if rm_field == 0b111 {
+                                "bx"
+                            } else {
+                                panic!("Bad rm field")
+                            };
+                            address_calculation.to_owned()
+                        };
+
+                        let (dest, source) = if direction == 0 {
+                            (address_calculation, register_to_assembly_name(register))
+                        } else if direction == 1 {
+                            (register_to_assembly_name(register), address_calculation)
+                        } else {
+                            panic!("Unexpected direction")
+                        };
+
+                        format!("mov {}, {}\n", dest, source)
+                    }
                     Mode::Mem8BitDisplacement => todo!(),
                     Mode::Mem16BitDisplacement => todo!(),
                     Mode::Register => {
