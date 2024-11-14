@@ -61,17 +61,11 @@ const TO_REGISTER: [Register; 16] = [
     Register::Di,
 ];
 
-fn get_register_enum(register_field: u8, word_byte_field: u8) -> Register {
+fn get_register_enum(register_field: u8, word_byte_field: WordByte) -> Register {
     TO_REGISTER[(register_field as usize) + (8 * (word_byte_field as usize))]
 }
 
-/// get the register field from the second byte
-fn get_register_field(byte: u8, word_byte_field: u8) -> Register {
-    let register_field = (byte & 0b00111000) >> 3;
-    get_register_enum(register_field, word_byte_field)
-}
-
-fn get_rm_register_field(byte: u8, word_byte_field: u8) -> Register {
+fn get_rm_register_field(byte: u8, word_byte_field: WordByte) -> Register {
     let register_field = byte & 0b00000111;
     get_register_enum(register_field, word_byte_field)
 }
@@ -97,6 +91,50 @@ fn register_to_assembly_name(register: Register) -> String {
     }
 }
 
+#[repr(u8)]
+#[derive(PartialEq, Copy, Clone)]
+enum WordByte {
+    Byte = 0b0,
+    Word = 0b1,
+}
+
+impl From<u8> for WordByte {
+    fn from(value: u8) -> Self {
+        if value == 0 {
+            WordByte::Byte
+        } else if value == 1 {
+            WordByte::Word
+        } else {
+            panic!("Unable to convert")
+        }
+    }
+}
+
+#[repr(u8)]
+#[derive(PartialEq, Copy, Clone)]
+enum Mode {
+    MemNoDisplacement = 0b00,
+    Mem8BitDisplacement = 0b01,
+    Mem16BitDisplacement = 0b10,
+    Register = 0b11,
+}
+
+impl From<u8> for Mode {
+    fn from(value: u8) -> Self {
+        if value == 0b00 {
+            Mode::MemNoDisplacement
+        } else if value == 0b01 {
+            Mode::Mem8BitDisplacement
+        } else if value == 0b10 {
+            Mode::Mem16BitDisplacement
+        } else if value == 0b11 {
+            Mode::Register
+        } else {
+            panic!("Bad mode value")
+        }
+    }
+}
+
 pub fn disassemble(machine_code: Vec<u8>) -> String {
     let mut result = "bits 16\n".to_owned();
 
@@ -108,19 +146,21 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
 
         match opcode {
             OpCode::RegisterImmediateMov => {
-                let word_byte = (first_byte & 0b00001000) >> 3;
+                let word_byte: WordByte = ((first_byte & 0b00001000) >> 3).into();
                 let register_field = first_byte & 0b00000111;
-                let register = get_register_field(register_field, word_byte);
-                let (immediate, bytes_read) = if word_byte == 0 {
-                    let second_byte = machine_code[index + 1];
-                    (second_byte as u16, 1)
-                } else if word_byte == 1 {
-                    let second_byte = machine_code[index + 1];
-                    let third_byte = machine_code[index + 1];
-                    let immediate = ((second_byte as u16) << 8) | (third_byte as u16);
-                    (immediate, 2)
-                } else {
-                    panic!("Bad word byte value");
+                let register = get_register_enum(register_field, word_byte);
+
+                let (immediate, bytes_read) = match word_byte {
+                    WordByte::Byte => {
+                        let second_byte = machine_code[index + 1];
+                        (second_byte as u16, 1)
+                    }
+                    WordByte::Word => {
+                        let second_byte = machine_code[index + 1];
+                        let third_byte = machine_code[index + 1];
+                        let immediate = ((second_byte as u16) << 8) | (third_byte as u16);
+                        (immediate, 2)
+                    }
                 };
 
                 let instruction = format!(
@@ -135,36 +175,34 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
             }
             OpCode::RegisterRegisterMov => {
                 let direction = (first_byte & 0b00000010) >> 1;
-                let word_byte = first_byte & 0b00000001;
+                let word_byte: WordByte = (first_byte & 0b00000001).into();
 
                 let second_byte = machine_code[index + 1];
-                let mode = (second_byte & 0b11000000) >> 6;
-                let register = get_register_field(second_byte, word_byte);
+                let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
+                let register_field = (second_byte & 0b00111000) >> 3;
+                let register = get_register_enum(register_field, word_byte);
 
-                let instruction = if mode == 0b00 {
-                    todo!()
-                } else if mode == 0b01 {
-                    todo!()
-                } else if mode == 0b10 {
-                    todo!()
-                } else if mode == 0b11 {
-                    let second_register = get_rm_register_field(second_byte, word_byte);
+                let instruction = match mode {
+                    Mode::MemNoDisplacement => todo!(),
+                    Mode::Mem8BitDisplacement => todo!(),
+                    Mode::Mem16BitDisplacement => todo!(),
+                    Mode::Register => {
+                        let second_register = get_rm_register_field(second_byte, word_byte);
 
-                    let (src_register, dest_register) = if direction == 0 {
-                        (register, second_register)
-                    } else if direction == 1 {
-                        (second_register, register)
-                    } else {
-                        panic!("Bad")
-                    };
+                        let (src_register, dest_register) = if direction == 0 {
+                            (register, second_register)
+                        } else if direction == 1 {
+                            (second_register, register)
+                        } else {
+                            panic!("Bad")
+                        };
 
-                    format!(
-                        "mov {}, {}\n",
-                        register_to_assembly_name(dest_register),
-                        register_to_assembly_name(src_register)
-                    )
-                } else {
-                    panic!("Unexpected mode value")
+                        format!(
+                            "mov {}, {}\n",
+                            register_to_assembly_name(dest_register),
+                            register_to_assembly_name(src_register)
+                        )
+                    }
                 };
 
                 result.push_str(&instruction);
