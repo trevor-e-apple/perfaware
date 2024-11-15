@@ -1,4 +1,6 @@
+mod assembly_types;
 mod disassemble;
+mod mov_mem;
 
 use std::{
     env,
