@@ -53,7 +53,7 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 index += bytes_read;
             }
             OpCode::MovMem => {
-                let (instruction, index) = mov_mem(machine_code, index);
+                let (instruction, index_increment) = mov_mem(&machine_code, index);
 
                 result.push_str(&instruction);
                 index += index_increment;
