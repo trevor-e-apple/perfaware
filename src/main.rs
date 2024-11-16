@@ -105,20 +105,24 @@ fn main() {
         run_nasm(&gen_asm_path, &gen_outpath);
 
         // perform a diff check
-        {
+        let test_passed: bool = {
             let original_data = fs::read(&original_outpath).expect("Unexpected read error");
             let gen_data = fs::read(&gen_outpath).expect("Unexpected read error");
 
+            let mut test_passed = true;
             for (original_byte, gen_byte) in zip(&original_data, &gen_data) {
                 if *original_byte != *gen_byte {
                     println!("{} dissassembly failed", original_asm_path);
+                    test_passed = false;
                     break;
                 }
             }
-        }
+
+            test_passed
+        };
 
         // delete the generated files
-        {
+        if test_passed {
             remove_file(&gen_asm_path).expect("Unable to remove gen asm");
             remove_file(&gen_outpath).expect("Unable to remove gen binary");
         }

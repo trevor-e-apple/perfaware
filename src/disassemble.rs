@@ -3,12 +3,14 @@ use crate::mov_mem::mov_mem;
 
 /// get the 6-bit op code from the first byte of an instruction
 fn get_opcode(byte: u8) -> OpCode {
-    let opcode = (byte & 0b11111100) >> 2;
+    let first_four_bits = (byte & 0b11110000) >> 4;
+    if first_four_bits == (OpCode::RegisterImmediateMov as u8) {
+        return OpCode::RegisterImmediateMov;
+    }
 
-    if opcode == (OpCode::MovMem as u8) {
+    let first_six_bits = (byte & 0b11111100) >> 2;
+    if first_six_bits == (OpCode::MovMem as u8) {
         OpCode::MovMem
-    } else if opcode == (OpCode::RegisterImmediateMov as u8) {
-        OpCode::RegisterImmediateMov
     } else {
         panic!("Unexpected opcode");
     }
@@ -29,7 +31,7 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 let register_field = first_byte & 0b00000111;
                 let register = get_register_enum(register_field, word_byte);
 
-                let (immediate, bytes_read) = match word_byte {
+                let (immediate, immediate_bytes) = match word_byte {
                     WordByte::Byte => {
                         let second_byte = machine_code[index + 1];
                         (second_byte as u16, 1)
@@ -50,7 +52,8 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
 
                 result.push_str(&instruction);
 
-                index += bytes_read;
+                // 1 byte for the opcode + the number of bytes in the immediate
+                index += immediate_bytes + 1;
             }
             OpCode::MovMem => {
                 let (instruction, index_increment) = mov_mem(&machine_code, index);
