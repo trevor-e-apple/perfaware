@@ -1,4 +1,5 @@
 use crate::assembly_types::{get_register_enum, register_to_assembly_name, OpCode, WordByte};
+use crate::byte_operations::concat_bytes;
 use crate::mov_mem::mov_mem;
 
 /// get the 6-bit op code from the first byte of an instruction
@@ -38,8 +39,8 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                     }
                     WordByte::Word => {
                         let second_byte = machine_code[index + 1];
-                        let third_byte = machine_code[index + 1];
-                        let immediate = ((second_byte as u16) << 8) | (third_byte as u16);
+                        let third_byte = machine_code[index + 2];
+                        let immediate = concat_bytes(third_byte, second_byte);
                         (immediate, 2)
                     }
                 };

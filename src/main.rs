@@ -1,4 +1,5 @@
 mod assembly_types;
+mod byte_operations;
 mod disassemble;
 mod mov_mem;
 

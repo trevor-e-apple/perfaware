@@ -1,6 +1,7 @@
 use crate::assembly_types::{
     get_register_enum, get_rm_register_field, register_to_assembly_name, Mode, WordByte,
 };
+use crate::byte_operations::concat_bytes;
 
 fn displacement_address<T: std::fmt::Display>(rm_field: u8, displacement: T) -> String {
     if rm_field == 0b000 {
@@ -22,10 +23,6 @@ fn displacement_address<T: std::fmt::Display>(rm_field: u8, displacement: T) -> 
     } else {
         panic!("Bad rm field")
     }
-}
-
-fn concat_bytes(third_byte: u8, fourth_byte: u8) -> u16 {
-    ((third_byte as u16) << 8) | (fourth_byte as u16)
 }
 
 pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
@@ -54,7 +51,7 @@ pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
             } else if rm_field == 0b101 {
                 ("di".to_owned(), 2)
             } else if rm_field == 0b110 {
-                let displacement = concat_bytes(machine_code[index + 2], machine_code[index + 3]);
+                let displacement = concat_bytes(machine_code[index + 3], machine_code[index + 2]);
                 (format!("{}", displacement), 4)
             } else if rm_field == 0b111 {
                 ("bx".to_owned(), 2)
@@ -89,7 +86,7 @@ pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
         }
         Mode::Mem16BitDisplacement => {
             let rm_field = second_byte & 0b0000111;
-            let displacement = concat_bytes(machine_code[index + 2], machine_code[index + 3]);
+            let displacement = concat_bytes(machine_code[index + 3], machine_code[index + 2]);
             let address_calculation = displacement_address(rm_field, displacement);
 
             let (dest, source) = if direction == 0 {
