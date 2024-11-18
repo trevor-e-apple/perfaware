@@ -1,8 +1,10 @@
-use crate::assembly_types::{
-    get_register_enum, get_rm_register_field, register_to_assembly_name, Mode, WordByte,
-};
 use crate::byte_operations::concat_bytes;
+use crate::common_assembly::{
+    get_direction_wordbyte_fields, get_register_enum, get_rm_register_field,
+    register_to_assembly_name, Direction, Mode,
+};
 
+/// Format the displacement address
 fn displacement_address<T: std::fmt::Display>(rm_field: u8, displacement: T) -> String {
     if rm_field == 0b000 {
         format!("[bx + si + {}]", displacement)
@@ -25,10 +27,10 @@ fn displacement_address<T: std::fmt::Display>(rm_field: u8, displacement: T) -> 
     }
 }
 
+/// get the mov mem disassembly string and the number of bytes that were a part of the instruction
 pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
     let first_byte = machine_code[index];
-    let direction = (first_byte & 0b00000010) >> 1;
-    let word_byte: WordByte = (first_byte & 0b00000001).into();
+    let (direction, word_byte) = get_direction_wordbyte_fields(first_byte);
 
     let second_byte = machine_code[index + 1];
     let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
@@ -59,12 +61,9 @@ pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
                 panic!("Bad rm field")
             };
 
-            let (dest, source) = if direction == 0 {
-                (address_calculation, register_to_assembly_name(register))
-            } else if direction == 1 {
-                (register_to_assembly_name(register), address_calculation)
-            } else {
-                panic!("Unexpected direction")
+            let (dest, source) = match direction {
+                Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
+                Direction::RmReg => (register_to_assembly_name(register), address_calculation),
             };
 
             (format!("mov {}, {}\n", dest, source), index_increment)
@@ -74,12 +73,9 @@ pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
             let displacement = machine_code[index + 2];
             let address_calculation = displacement_address(rm_field, displacement);
 
-            let (dest, source) = if direction == 0 {
-                (address_calculation, register_to_assembly_name(register))
-            } else if direction == 1 {
-                (register_to_assembly_name(register), address_calculation)
-            } else {
-                panic!("Unexpected direction")
+            let (dest, source) = match direction {
+                Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
+                Direction::RmReg => (register_to_assembly_name(register), address_calculation),
             };
 
             (format!("mov {}, {}\n", dest, source), 3)
@@ -89,12 +85,9 @@ pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
             let displacement = concat_bytes(machine_code[index + 3], machine_code[index + 2]);
             let address_calculation = displacement_address(rm_field, displacement);
 
-            let (dest, source) = if direction == 0 {
-                (address_calculation, register_to_assembly_name(register))
-            } else if direction == 1 {
-                (register_to_assembly_name(register), address_calculation)
-            } else {
-                panic!("Unexpected direction")
+            let (dest, source) = match direction {
+                Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
+                Direction::RmReg => (register_to_assembly_name(register), address_calculation),
             };
 
             (format!("mov {}, {}\n", dest, source), 4)
@@ -102,12 +95,9 @@ pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
         Mode::Register => {
             let second_register = get_rm_register_field(second_byte, word_byte);
 
-            let (src_register, dest_register) = if direction == 0 {
-                (register, second_register)
-            } else if direction == 1 {
-                (second_register, register)
-            } else {
-                panic!("Bad")
+            let (src_register, dest_register) = match direction {
+                Direction::RegRm => (register, second_register),
+                Direction::RmReg => (second_register, register),
             };
 
             (

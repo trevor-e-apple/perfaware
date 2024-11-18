@@ -1,5 +1,7 @@
-use crate::assembly_types::{get_register_enum, register_to_assembly_name, OpCode, WordByte};
 use crate::byte_operations::concat_bytes;
+use crate::common_assembly::{
+    get_direction_wordbyte_fields, get_register_enum, register_to_assembly_name, OpCode, WordByte,
+};
 use crate::mov_mem::mov_mem;
 
 /// get the 6-bit op code from the first byte of an instruction
@@ -12,11 +14,14 @@ fn get_opcode(byte: u8) -> OpCode {
     let first_six_bits = (byte & 0b11111100) >> 2;
     if first_six_bits == (OpCode::MovMem as u8) {
         OpCode::MovMem
+    } else if first_six_bits == (OpCode::AddMemMem as u8) {
+        OpCode::AddMemMem
     } else {
         panic!("Unexpected opcode");
     }
 }
 
+/// perform disassembly
 pub fn disassemble(machine_code: Vec<u8>) -> String {
     let mut result = "bits 16\n".to_owned();
 
@@ -61,6 +66,9 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
 
                 result.push_str(&instruction);
                 index += index_increment;
+            }
+            OpCode::AddMemMem => {
+                let (direction, word_byte) = get_direction_wordbyte_fields(first_byte);
             }
         }
     }

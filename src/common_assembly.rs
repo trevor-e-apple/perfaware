@@ -3,6 +3,7 @@
 pub enum OpCode {
     RegisterImmediateMov = 0b1011,
     MovMem = 0b100010,
+    AddMemMem = 0b000000,
 }
 
 #[repr(u8)]
@@ -99,6 +100,25 @@ impl From<u8> for WordByte {
 
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone)]
+pub enum Direction {
+    RegRm = 0b0,
+    RmReg = 0b1,
+}
+
+impl From<u8> for Direction {
+    fn from(value: u8) -> Self {
+        if value == 0 {
+            Direction::RegRm
+        } else if value == 1 {
+            Direction::RmReg
+        } else {
+            panic!("Unable to convert")
+        }
+    }
+}
+
+#[repr(u8)]
+#[derive(PartialEq, Copy, Clone)]
 pub enum Mode {
     MemNoDisplacement = 0b00,
     Mem8BitDisplacement = 0b01,
@@ -120,4 +140,12 @@ impl From<u8> for Mode {
             panic!("Bad mode value")
         }
     }
+}
+
+/// gets direction and wordbyte fields from the last two bits of an 8bit opcode
+pub fn get_direction_wordbyte_fields(byte: u8) -> (Direction, WordByte) {
+    (
+        ((byte & 0b00000010) >> 1).into(),
+        (byte & 0b00000001).into(),
+    )
 }
