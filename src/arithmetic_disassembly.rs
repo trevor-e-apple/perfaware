@@ -1,7 +1,6 @@
 use crate::byte_operations::concat_bytes;
 use crate::common_assembly::{
-    get_direction_wordbyte_fields, get_register_enum, get_rm_register_field,
-    register_to_assembly_name, Direction, Mode,
+    get_register_enum, get_rm_register_field, register_to_assembly_name, Direction, Mode, WordByte,
 };
 
 /// Format the displacement address
@@ -27,10 +26,17 @@ fn displacement_address<T: std::fmt::Display>(rm_field: u8, displacement: T) -> 
     }
 }
 
-/// get the mov mem disassembly string and the number of bytes that were a part of the instruction
-pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
+/// get the disassembly string and the number of bytes that were a part of the instruction for
+/// any disassembly with the form [opcode:6 d:1 w:1] [mod:2 reg:3 rm:3] [disp-lo] [disp-hi]
+pub fn arithmetic_diassembly(
+    assembly_name: String,
+    machine_code: &Vec<u8>,
+    index: usize,
+) -> (String, usize) {
     let first_byte = machine_code[index];
-    let (direction, word_byte) = get_direction_wordbyte_fields(first_byte);
+
+    let direction: Direction = ((first_byte & 0b00000010) >> 1).into();
+    let word_byte: WordByte = (first_byte & 0b00000001).into();
 
     let second_byte = machine_code[index + 1];
     let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
@@ -66,7 +72,10 @@ pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
                 Direction::RmReg => (register_to_assembly_name(register), address_calculation),
             };
 
-            (format!("mov {}, {}\n", dest, source), index_increment)
+            (
+                format!("{} {}, {}\n", assembly_name, dest, source),
+                index_increment,
+            )
         }
         Mode::Mem8BitDisplacement => {
             let rm_field = second_byte & 0b0000111;
@@ -78,7 +87,7 @@ pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
                 Direction::RmReg => (register_to_assembly_name(register), address_calculation),
             };
 
-            (format!("mov {}, {}\n", dest, source), 3)
+            (format!("{} {}, {}\n", assembly_name, dest, source), 3)
         }
         Mode::Mem16BitDisplacement => {
             let rm_field = second_byte & 0b0000111;
@@ -90,7 +99,7 @@ pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
                 Direction::RmReg => (register_to_assembly_name(register), address_calculation),
             };
 
-            (format!("mov {}, {}\n", dest, source), 4)
+            (format!("{} {}, {}\n", assembly_name, dest, source), 4)
         }
         Mode::Register => {
             let second_register = get_rm_register_field(second_byte, word_byte);
@@ -102,7 +111,8 @@ pub fn mov_mem(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
 
             (
                 format!(
-                    "mov {}, {}\n",
+                    "{} {}, {}\n",
+                    assembly_name,
                     register_to_assembly_name(dest_register),
                     register_to_assembly_name(src_register)
                 ),

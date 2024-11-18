@@ -141,11 +141,3 @@ impl From<u8> for Mode {
         }
     }
 }
-
-/// gets direction and wordbyte fields from the last two bits of an 8bit opcode
-pub fn get_direction_wordbyte_fields(byte: u8) -> (Direction, WordByte) {
-    (
-        ((byte & 0b00000010) >> 1).into(),
-        (byte & 0b00000001).into(),
-    )
-}

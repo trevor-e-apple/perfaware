@@ -1,7 +1,7 @@
+mod arithmetic_disassembly;
 mod byte_operations;
 mod common_assembly;
 mod disassemble;
-mod mov_mem;
 
 use std::{
     env,

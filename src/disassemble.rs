@@ -1,8 +1,6 @@
+use crate::arithmetic_disassembly::arithmetic_diassembly;
 use crate::byte_operations::concat_bytes;
-use crate::common_assembly::{
-    get_direction_wordbyte_fields, get_register_enum, register_to_assembly_name, OpCode, WordByte,
-};
-use crate::mov_mem::mov_mem;
+use crate::common_assembly::{get_register_enum, register_to_assembly_name, OpCode, WordByte};
 
 /// get the 6-bit op code from the first byte of an instruction
 fn get_opcode(byte: u8) -> OpCode {
@@ -62,13 +60,18 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 index += immediate_bytes + 1;
             }
             OpCode::MovMem => {
-                let (instruction, index_increment) = mov_mem(&machine_code, index);
+                let (instruction, index_increment) =
+                    arithmetic_diassembly("mov".to_owned(), &machine_code, index);
 
                 result.push_str(&instruction);
                 index += index_increment;
             }
             OpCode::AddMemMem => {
-                let (direction, word_byte) = get_direction_wordbyte_fields(first_byte);
+                let (instruction, index_increment) =
+                    arithmetic_diassembly("add".to_owned(), &machine_code, index);
+
+                result.push_str(&instruction);
+                index += index_increment;
             }
         }
     }
