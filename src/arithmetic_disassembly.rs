@@ -1,30 +1,8 @@
 use crate::byte_operations::concat_bytes;
 use crate::common_assembly::{
-    get_register_enum, get_rm_register_field, register_to_assembly_name, Direction, Mode, WordByte,
+    displacement_address, get_register_enum, get_rm_register_field, register_to_assembly_name,
+    Direction, Mode, WordByte,
 };
-
-/// Format the displacement address
-fn displacement_address<T: std::fmt::Display>(rm_field: u8, displacement: T) -> String {
-    if rm_field == 0b000 {
-        format!("[bx + si + {}]", displacement)
-    } else if rm_field == 0b001 {
-        format!("[bx + di + {}]", displacement)
-    } else if rm_field == 0b010 {
-        format!("[bp + si + {}]", displacement)
-    } else if rm_field == 0b011 {
-        format!("[bp + di + {}]", displacement)
-    } else if rm_field == 0b100 {
-        format!("[si + {}]", displacement)
-    } else if rm_field == 0b101 {
-        format!("[di + {}]", displacement)
-    } else if rm_field == 0b110 {
-        format!("[bp + {}]", displacement)
-    } else if rm_field == 0b111 {
-        format!("[bx + {}]", displacement)
-    } else {
-        panic!("Bad rm field")
-    }
-}
 
 /// get the disassembly string and the number of bytes that were a part of the instruction for
 /// any disassembly with the form [opcode:6 d:1 w:1] [mod:2 reg:3 rm:3] [disp-lo] [disp-hi]

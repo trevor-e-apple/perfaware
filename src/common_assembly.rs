@@ -4,6 +4,7 @@ pub enum OpCode {
     RegisterImmediateMov = 0b1011,
     MovMem = 0b100010,
     AddMemMem = 0b000000,
+    Arithmetic = 0b100000,
 }
 
 #[repr(u8)]
@@ -139,5 +140,50 @@ impl From<u8> for Mode {
         } else {
             panic!("Bad mode value")
         }
+    }
+}
+
+#[repr(u8)]
+#[derive(PartialEq, Copy, Clone)]
+pub enum ArithmeticOpCode {
+    Add = 0b000,
+    Sub = 0b101,
+    Cmp = 0b111,
+}
+
+impl From<u8> for ArithmeticOpCode {
+    fn from(value: u8) -> Self {
+        if value == 0b000 {
+            ArithmeticOpCode::Add
+        } else if value == 0b101 {
+            ArithmeticOpCode::Sub
+        } else if value == 0b111 {
+            ArithmeticOpCode::Cmp
+        } else {
+            panic!("Bad mode value")
+        }
+    }
+}
+
+/// Format the displacement address
+pub fn displacement_address<T: std::fmt::Display>(rm_field: u8, displacement: T) -> String {
+    if rm_field == 0b000 {
+        format!("[bx + si + {}]", displacement)
+    } else if rm_field == 0b001 {
+        format!("[bx + di + {}]", displacement)
+    } else if rm_field == 0b010 {
+        format!("[bp + si + {}]", displacement)
+    } else if rm_field == 0b011 {
+        format!("[bp + di + {}]", displacement)
+    } else if rm_field == 0b100 {
+        format!("[si + {}]", displacement)
+    } else if rm_field == 0b101 {
+        format!("[di + {}]", displacement)
+    } else if rm_field == 0b110 {
+        format!("[bp + {}]", displacement)
+    } else if rm_field == 0b111 {
+        format!("[bx + {}]", displacement)
+    } else {
+        panic!("Bad rm field")
     }
 }

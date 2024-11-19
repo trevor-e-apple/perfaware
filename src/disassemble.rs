@@ -1,6 +1,9 @@
 use crate::arithmetic_disassembly::arithmetic_diassembly;
 use crate::byte_operations::concat_bytes;
-use crate::common_assembly::{get_register_enum, register_to_assembly_name, OpCode, WordByte};
+use crate::common_assembly::{
+    displacement_address, get_register_enum, get_rm_register_field, register_to_assembly_name,
+    ArithmeticOpCode, Mode, OpCode, WordByte,
+};
 
 /// get the 6-bit op code from the first byte of an instruction
 fn get_opcode(byte: u8) -> OpCode {
@@ -14,6 +17,8 @@ fn get_opcode(byte: u8) -> OpCode {
         OpCode::MovMem
     } else if first_six_bits == (OpCode::AddMemMem as u8) {
         OpCode::AddMemMem
+    } else if first_six_bits == (OpCode::Arithmetic as u8) {
+        OpCode::Arithmetic
     } else {
         panic!("Unexpected opcode");
     }
@@ -34,14 +39,11 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 let word_byte: WordByte = ((first_byte & 0b00001000) >> 3).into();
                 let register_field = first_byte & 0b00000111;
                 let register = get_register_enum(register_field, word_byte);
+                let second_byte = machine_code[index + 1];
 
                 let (immediate, immediate_bytes) = match word_byte {
-                    WordByte::Byte => {
-                        let second_byte = machine_code[index + 1];
-                        (second_byte as u16, 1)
-                    }
+                    WordByte::Byte => (second_byte as u16, 1),
                     WordByte::Word => {
-                        let second_byte = machine_code[index + 1];
                         let third_byte = machine_code[index + 2];
                         let immediate = concat_bytes(third_byte, second_byte);
                         (immediate, 2)
@@ -71,6 +73,53 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                     arithmetic_diassembly("add".to_owned(), &machine_code, index);
 
                 result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Arithmetic => {
+                let word_byte: WordByte = (first_byte & 0b00000001).into();
+
+                let second_byte = machine_code[index + 1];
+                let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
+                let arithmetic_code: ArithmeticOpCode = ((second_byte & 0b00111000) >> 3).into();
+                // let rm_field = second_byte & 0b00000111;
+
+                // let third_byte = machine_code[index + 2];
+                // let fourth_byte = machine_code[index + 3];
+
+                let (dest_arg, immediate, index_increment) = match mode {
+                    Mode::MemNoDisplacement => todo!(),
+                    Mode::Mem8BitDisplacement => todo!(),
+                    Mode::Mem16BitDisplacement => todo!(),
+                    Mode::Register => {
+                        let register = get_rm_register_field(second_byte, word_byte);
+                        let name = register_to_assembly_name(register);
+                        let third_byte = machine_code[index + 2];
+                        (format!("{}", name), third_byte, 3)
+                    }
+                };
+
+                // let fifth_byte = machine_code[index + 4];
+                // let (immediate, immediate_bytes) = match word_byte {
+                //     WordByte::Byte => (fifth_byte as u16, 1),
+                //     WordByte::Word => {
+                //         let sixth_byte = machine_code[index + 5];
+                //         let immediate = concat_bytes(sixth_byte, fifth_byte);
+                //         (immediate, 2)
+                //     }
+                // };
+
+                let instruction = match arithmetic_code {
+                    ArithmeticOpCode::Add => {
+                        let instruction = format!("add {}, {}\n", dest_arg, immediate);
+
+                        instruction
+                    }
+                    ArithmeticOpCode::Sub => todo!(),
+                    ArithmeticOpCode::Cmp => todo!(),
+                };
+
+                result.push_str(&instruction);
+
                 index += index_increment;
             }
         }
