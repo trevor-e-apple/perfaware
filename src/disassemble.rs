@@ -1,4 +1,4 @@
-use crate::arithmetic_disassembly::arithmetic_diassembly;
+use crate::arithmetic_disassembly::{arithmetic_diassembly, no_displacement_address};
 use crate::byte_operations::concat_bytes;
 use crate::common_assembly::{
     displacement_address, get_register_enum, get_rm_register_field, register_to_assembly_name,
@@ -87,7 +87,19 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 // let fourth_byte = machine_code[index + 3];
 
                 let (dest_arg, immediate, index_increment) = match mode {
-                    Mode::MemNoDisplacement => todo!(),
+                    Mode::MemNoDisplacement => {
+                        let rm_field = second_byte & 0b00000111;
+                        // TODO: do we need high and low bytes here???
+                        let third_byte = machine_code[index + 2];
+                        let (address_calculation, index_increment) =
+                            no_displacement_address(rm_field, 0, 0);
+
+                        (
+                            format!("byte [{}]", address_calculation),
+                            third_byte,
+                            index_increment + 1,
+                        )
+                    }
                     Mode::Mem8BitDisplacement => todo!(),
                     Mode::Mem16BitDisplacement => todo!(),
                     Mode::Register => {

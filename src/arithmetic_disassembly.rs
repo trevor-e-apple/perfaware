@@ -4,6 +4,29 @@ use crate::common_assembly::{
     Direction, Mode, WordByte,
 };
 
+pub fn no_displacement_address(rm_field: u8, high_byte: u8, low_byte: u8) -> (String, usize) {
+    if rm_field == 0b000 {
+        ("[bx + si]".to_owned(), 2)
+    } else if rm_field == 0b001 {
+        ("[bx + di]".to_owned(), 2)
+    } else if rm_field == 0b010 {
+        ("[bp + si]".to_owned(), 2)
+    } else if rm_field == 0b011 {
+        ("[bp + di]".to_owned(), 2)
+    } else if rm_field == 0b100 {
+        ("si".to_owned(), 2)
+    } else if rm_field == 0b101 {
+        ("di".to_owned(), 2)
+    } else if rm_field == 0b110 {
+        let displacement = concat_bytes(high_byte, low_byte);
+        (format!("{}", displacement), 4)
+    } else if rm_field == 0b111 {
+        ("bx".to_owned(), 2)
+    } else {
+        panic!("Bad rm field")
+    }
+}
+
 /// get the disassembly string and the number of bytes that were a part of the instruction for
 /// any disassembly with the form [opcode:6 d:1 w:1] [mod:2 reg:3 rm:3] [disp-lo] [disp-hi]
 pub fn arithmetic_diassembly(
@@ -24,26 +47,10 @@ pub fn arithmetic_diassembly(
     let (instruction, index_increment) = match mode {
         Mode::MemNoDisplacement => {
             let rm_field = second_byte & 0b00000111;
-            let (address_calculation, index_increment) = if rm_field == 0b000 {
-                ("[bx + si]".to_owned(), 2)
-            } else if rm_field == 0b001 {
-                ("[bx + di]".to_owned(), 2)
-            } else if rm_field == 0b010 {
-                ("[bp + si]".to_owned(), 2)
-            } else if rm_field == 0b011 {
-                ("[bp + di]".to_owned(), 2)
-            } else if rm_field == 0b100 {
-                ("si".to_owned(), 2)
-            } else if rm_field == 0b101 {
-                ("di".to_owned(), 2)
-            } else if rm_field == 0b110 {
-                let displacement = concat_bytes(machine_code[index + 3], machine_code[index + 2]);
-                (format!("{}", displacement), 4)
-            } else if rm_field == 0b111 {
-                ("bx".to_owned(), 2)
-            } else {
-                panic!("Bad rm field")
-            };
+            let high_byte = machine_code[index + 3];
+            let low_byte = machine_code[index + 2];
+            let (address_calculation, index_increment) =
+                no_displacement_address(rm_field, high_byte, low_byte);
 
             let (dest, source) = match direction {
                 Direction::RegRm => (address_calculation, register_to_assembly_name(register)),

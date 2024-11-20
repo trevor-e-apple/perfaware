@@ -31,3 +31,4 @@ add [bp + 0], bx
 add [bx + 2], cx
 add [bp + si + 4], bh
 add [bp + di + 6], di
+add byte [bx], 34
