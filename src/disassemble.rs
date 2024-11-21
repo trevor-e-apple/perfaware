@@ -77,6 +77,10 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
             }
             OpCode::Arithmetic => {
                 let word_byte: WordByte = (first_byte & 0b00000001).into();
+                let word_byte_string = match word_byte {
+                    WordByte::Byte => "byte".to_owned(),
+                    WordByte::Word => "word".to_owned(),
+                };
 
                 let second_byte = machine_code[index + 1];
                 let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
@@ -90,17 +94,35 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                     Mode::MemNoDisplacement => {
                         let rm_field = second_byte & 0b00000111;
                         // TODO: do we need high and low bytes here???
-                        let third_byte = machine_code[index + 2];
-                        let (address_calculation, index_increment) =
+                        // TODO: we need a better way of unifying no_displacement address...
+                        let (address_calculation, address_increment) =
                             no_displacement_address(rm_field, 0, 0);
 
+                        let (immediate, data_increment) = match word_byte {
+                            WordByte::Byte => (machine_code[index + 2] as u16, 1),
+                            WordByte::Word => (
+                                concat_bytes(machine_code[index + 3], machine_code[index + 2]),
+                                2,
+                            ),
+                        };
+
                         (
-                            format!("byte [{}]", address_calculation),
-                            third_byte,
-                            index_increment + 1,
+                            format!("{} [{}]", word_byte_string, address_calculation),
+                            immediate,
+                            2 + data_increment,
                         )
                     }
-                    Mode::Mem8BitDisplacement => todo!(),
+                    Mode::Mem8BitDisplacement => {
+                        let rm_field = second_byte & 0b0000111;
+                        let displacement = machine_code[index + 2];
+                        let address_calculation = displacement_address(rm_field, displacement);
+
+                        (
+                            format!("{} {}", word_byte_string, address_calculation),
+                            machine_code[index + 3] as u16,
+                            4,
+                        )
+                    }
                     Mode::Mem16BitDisplacement => {
                         let rm_field = second_byte & 0b0000111;
                         let displacement =
@@ -108,8 +130,8 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                         let address_calculation = displacement_address(rm_field, displacement);
 
                         (
-                            format!("word {}", address_calculation),
-                            machine_code[index + 4],
+                            format!("{} {}", word_byte_string, address_calculation),
+                            machine_code[index + 4] as u16,
                             5,
                         )
                     }
@@ -117,7 +139,7 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                         let register = get_rm_register_field(second_byte, word_byte);
                         let name = register_to_assembly_name(register);
                         let third_byte = machine_code[index + 2];
-                        (format!("{}", name), third_byte, 3)
+                        (format!("{}", name), third_byte as u16, 3)
                     }
                 };
 

@@ -32,4 +32,10 @@ add [bx + 2], cx
 add [bp + si + 4], bh
 add [bp + di + 6], di
 add byte [bx], 34
-add word [bp + si + 1000], 29
+add word [bx], 1000 ; no displacement word data
+add byte [bx + 1], 34 ; one byte displacement
+add byte [bx + 1000], 34 ; word displacement, byte data
+add word [bp + si + 1000], 29 ; word displacement
+add word [bp + si + 1], 29 ; add word, byte displacement, byte data
+add word [bp + si + 1000], 256 ; word displacement, word data
+add ax, [bp]
