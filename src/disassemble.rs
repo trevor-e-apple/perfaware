@@ -101,7 +101,18 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                         )
                     }
                     Mode::Mem8BitDisplacement => todo!(),
-                    Mode::Mem16BitDisplacement => todo!(),
+                    Mode::Mem16BitDisplacement => {
+                        let rm_field = second_byte & 0b0000111;
+                        let displacement =
+                            concat_bytes(machine_code[index + 3], machine_code[index + 2]);
+                        let address_calculation = displacement_address(rm_field, displacement);
+
+                        (
+                            format!("word {}", address_calculation),
+                            machine_code[index + 4],
+                            5,
+                        )
+                    }
                     Mode::Register => {
                         let register = get_rm_register_field(second_byte, word_byte);
                         let name = register_to_assembly_name(register);
