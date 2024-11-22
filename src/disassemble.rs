@@ -24,6 +24,34 @@ fn get_opcode(byte: u8) -> OpCode {
     }
 }
 
+fn get_immediate(
+    machine_code: &Vec<u8>,
+    index: usize,
+    low_byte_index: usize,
+    high_byte_index: usize,
+    word_byte: WordByte,
+    sign_extension: u8,
+) -> (u16, usize) {
+    let byte_value = (machine_code[index + low_byte_index] as u16, 1);
+
+    match word_byte {
+        WordByte::Byte => byte_value,
+        WordByte::Word => {
+            if sign_extension == 0 {
+                (
+                    concat_bytes(
+                        machine_code[index + high_byte_index],
+                        machine_code[index + low_byte_index],
+                    ),
+                    2,
+                )
+            } else {
+                byte_value
+            }
+        }
+    }
+}
+
 /// perform disassembly
 pub fn disassemble(machine_code: Vec<u8>) -> String {
     let mut result = "bits 16\n".to_owned();
@@ -82,6 +110,8 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                     WordByte::Word => "word".to_owned(),
                 };
 
+                let sign_extension = (first_byte & 0b00000010) >> 1;
+
                 let second_byte = machine_code[index + 1];
                 let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
                 let arithmetic_code: ArithmeticOpCode = ((second_byte & 0b00111000) >> 3).into();
@@ -98,13 +128,8 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                         let (address_calculation, address_increment) =
                             no_displacement_address(rm_field, 0, 0);
 
-                        let (immediate, data_increment) = match word_byte {
-                            WordByte::Byte => (machine_code[index + 2] as u16, 1),
-                            WordByte::Word => (
-                                concat_bytes(machine_code[index + 3], machine_code[index + 2]),
-                                2,
-                            ),
-                        };
+                        let (immediate, data_increment) =
+                            get_immediate(&machine_code, index, 2, 3, word_byte, sign_extension);
 
                         (
                             format!("{} [{}]", word_byte_string, address_calculation),
@@ -117,10 +142,13 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                         let displacement = machine_code[index + 2];
                         let address_calculation = displacement_address(rm_field, displacement);
 
+                        let (immediate, data_increment) =
+                            get_immediate(&machine_code, index, 3, 4, word_byte, sign_extension);
+
                         (
                             format!("{} {}", word_byte_string, address_calculation),
-                            machine_code[index + 3] as u16,
-                            4,
+                            immediate,
+                            3 + data_increment,
                         )
                     }
                     Mode::Mem16BitDisplacement => {
@@ -129,10 +157,13 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                             concat_bytes(machine_code[index + 3], machine_code[index + 2]);
                         let address_calculation = displacement_address(rm_field, displacement);
 
+                        let (immediate, data_increment) =
+                            get_immediate(&machine_code, index, 4, 5, word_byte, sign_extension);
+
                         (
                             format!("{} {}", word_byte_string, address_calculation),
-                            machine_code[index + 4] as u16,
-                            5,
+                            immediate,
+                            4 + data_increment,
                         )
                     }
                     Mode::Register => {
@@ -142,16 +173,6 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                         (format!("{}", name), third_byte as u16, 3)
                     }
                 };
-
-                // let fifth_byte = machine_code[index + 4];
-                // let (immediate, immediate_bytes) = match word_byte {
-                //     WordByte::Byte => (fifth_byte as u16, 1),
-                //     WordByte::Word => {
-                //         let sixth_byte = machine_code[index + 5];
-                //         let immediate = concat_bytes(sixth_byte, fifth_byte);
-                //         (immediate, 2)
-                //     }
-                // };
 
                 let instruction = match arithmetic_code {
                     ArithmeticOpCode::Add => {
