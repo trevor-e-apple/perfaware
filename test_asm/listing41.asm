@@ -61,3 +61,4 @@ sub [bp + 0], bx
 sub [bx + 2], cx
 sub [bp + si + 4], bh
 sub [bp + di + 6], di
+sub byte [bx], 34
