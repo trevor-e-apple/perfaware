@@ -4,6 +4,7 @@ pub enum OpCode {
     RegisterImmediateMov = 0b1011,
     MovMem = 0b100010,
     AddMemMem = 0b000000,
+    SubMemMem = 0b001010,
     ImmediateArithmetic = 0b100000,
     ImmediateAccumulator = 0b000001,
 }

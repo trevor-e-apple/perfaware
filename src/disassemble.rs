@@ -21,6 +21,8 @@ fn get_opcode(byte: u8) -> OpCode {
         OpCode::ImmediateArithmetic
     } else if first_six_bits == (OpCode::ImmediateAccumulator as u8) {
         OpCode::ImmediateAccumulator
+    } else if first_six_bits == (OpCode::SubMemMem as u8) {
+        OpCode::SubMemMem
     } else {
         panic!("Unexpected opcode");
     }
@@ -105,6 +107,13 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 result.push_str(&instruction);
                 index += index_increment;
             }
+            OpCode::SubMemMem => {
+                let (instruction, index_increment) =
+                    arithmetic_diassembly("sub".to_owned(), &machine_code, index);
+
+                result.push_str(&instruction);
+                index += index_increment;
+            }
             OpCode::ImmediateArithmetic => {
                 let word_byte: WordByte = (first_byte & 0b00000001).into();
                 let word_byte_string = match word_byte {
@@ -182,7 +191,11 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
 
                         instruction
                     }
-                    ArithmeticOpCode::Sub => todo!(),
+                    ArithmeticOpCode::Sub => {
+                        let instruction = format!("sub {}, {}\n", dest_arg, immediate);
+
+                        instruction
+                    }
                     ArithmeticOpCode::Cmp => todo!(),
                 };
 
