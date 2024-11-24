@@ -126,6 +126,7 @@ fn main() {
         if test_passed {
             remove_file(&gen_asm_path).expect("Unable to remove gen asm");
             remove_file(&gen_outpath).expect("Unable to remove gen binary");
+            println!("Test passed");
         }
     }
 }

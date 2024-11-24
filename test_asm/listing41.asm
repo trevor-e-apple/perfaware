@@ -39,3 +39,9 @@ add word [bp + si + 1000], 29 ; word displacement
 add word [bp + si + 1], 29 ; add word, byte displacement, byte data
 add word [bp + si + 1000], 256 ; word displacement, word data
 add ax, [bp]
+add al, [bx + si]
+add ax, bx
+add al, ah
+add ax, 1000
+add al, -30
+add al, 9

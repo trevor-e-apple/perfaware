@@ -17,8 +17,10 @@ fn get_opcode(byte: u8) -> OpCode {
         OpCode::MovMem
     } else if first_six_bits == (OpCode::AddMemMem as u8) {
         OpCode::AddMemMem
-    } else if first_six_bits == (OpCode::Arithmetic as u8) {
-        OpCode::Arithmetic
+    } else if first_six_bits == (OpCode::ImmediateArithmetic as u8) {
+        OpCode::ImmediateArithmetic
+    } else if first_six_bits == (OpCode::ImmediateAccumulator as u8) {
+        OpCode::ImmediateAccumulator
     } else {
         panic!("Unexpected opcode");
     }
@@ -103,7 +105,7 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 result.push_str(&instruction);
                 index += index_increment;
             }
-            OpCode::Arithmetic => {
+            OpCode::ImmediateArithmetic => {
                 let word_byte: WordByte = (first_byte & 0b00000001).into();
                 let word_byte_string = match word_byte {
                     WordByte::Byte => "byte".to_owned(),
@@ -186,6 +188,24 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
 
                 result.push_str(&instruction);
 
+                index += index_increment;
+            }
+            OpCode::ImmediateAccumulator => {
+                let word_byte: WordByte = (first_byte & 0b00000001).into();
+                let (data, register, index_increment) = match word_byte {
+                    WordByte::Byte => {
+                        let data = machine_code[index + 1] as u16;
+                        (data, "al", 2)
+                    }
+                    WordByte::Word => {
+                        let data = concat_bytes(machine_code[index + 2], machine_code[index + 1]);
+                        (data, "ax", 3)
+                    }
+                };
+
+                let instruction = format!("add {}, {}\n", register, data);
+
+                result.push_str(&instruction);
                 index += index_increment;
             }
         }
