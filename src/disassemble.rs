@@ -1,4 +1,4 @@
-use crate::arithmetic_disassembly::{arithmetic_diassembly, no_displacement_address};
+use crate::arithmetic_disassembly::{arithmetic_diassembly, no_displacement_address_arithmetic};
 use crate::byte_operations::concat_bytes;
 use crate::common_assembly::{
     displacement_address, get_register_enum, get_rm_register_field, register_to_assembly_name,
@@ -137,13 +137,13 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                         // TODO: do we need high and low bytes here???
                         // TODO: we need a better way of unifying no_displacement address...
                         let (address_calculation, address_increment) =
-                            no_displacement_address(rm_field, 0, 0);
+                            no_displacement_address_arithmetic(rm_field, 0, 0);
 
                         let (immediate, data_increment) =
                             get_immediate(&machine_code, index, 2, 3, word_byte, sign_extension);
 
                         (
-                            format!("{} [{}]", word_byte_string, address_calculation),
+                            format!("{} {}", word_byte_string, address_calculation),
                             immediate,
                             2 + data_increment,
                         )

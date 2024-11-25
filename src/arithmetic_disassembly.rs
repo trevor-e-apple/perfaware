@@ -27,6 +27,33 @@ pub fn no_displacement_address(rm_field: u8, high_byte: u8, low_byte: u8) -> (St
     }
 }
 
+pub fn no_displacement_address_arithmetic(
+    rm_field: u8,
+    high_byte: u8,
+    low_byte: u8,
+) -> (String, usize) {
+    if rm_field == 0b000 {
+        ("[bx + si]".to_owned(), 2)
+    } else if rm_field == 0b001 {
+        ("[bx + di]".to_owned(), 2)
+    } else if rm_field == 0b010 {
+        ("[bp + si]".to_owned(), 2)
+    } else if rm_field == 0b011 {
+        ("[bp + di]".to_owned(), 2)
+    } else if rm_field == 0b100 {
+        ("[si]".to_owned(), 2)
+    } else if rm_field == 0b101 {
+        ("[di]".to_owned(), 2)
+    } else if rm_field == 0b110 {
+        let displacement = concat_bytes(high_byte, low_byte);
+        (format!("{}", displacement), 4)
+    } else if rm_field == 0b111 {
+        ("[bx]".to_owned(), 2)
+    } else {
+        panic!("Bad rm field")
+    }
+}
+
 /// get the disassembly string and the number of bytes that were a part of the instruction for
 /// any disassembly with the form [opcode:6 d:1 w:1] [mod:2 reg:3 rm:3] [disp-lo] [disp-hi]
 pub fn arithmetic_diassembly(
