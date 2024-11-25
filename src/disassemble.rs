@@ -7,7 +7,7 @@ use crate::common_assembly::{
 
 /// get the 6-bit op code from the first byte of an instruction
 fn get_opcode(byte: u8) -> OpCode {
-    let first_four_bits = (byte & 0b11110000) >> 4;
+    let first_four_bits = (byte & 0b11110000) >> 2;
     if first_four_bits == (OpCode::RegisterImmediateMov as u8) {
         return OpCode::RegisterImmediateMov;
     }
@@ -19,10 +19,12 @@ fn get_opcode(byte: u8) -> OpCode {
         OpCode::AddMemMem
     } else if first_six_bits == (OpCode::ImmediateArithmetic as u8) {
         OpCode::ImmediateArithmetic
-    } else if first_six_bits == (OpCode::ImmediateAccumulator as u8) {
-        OpCode::ImmediateAccumulator
+    } else if first_six_bits == (OpCode::ImmediateToAccumulator as u8) {
+        OpCode::ImmediateToAccumulator
     } else if first_six_bits == (OpCode::SubMemMem as u8) {
         OpCode::SubMemMem
+    } else if first_six_bits == (OpCode::ImmediateFromAccumulator as u8) {
+        OpCode::ImmediateFromAccumulator
     } else {
         panic!("Unexpected opcode");
     }
@@ -203,7 +205,7 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
 
                 index += index_increment;
             }
-            OpCode::ImmediateAccumulator => {
+            OpCode::ImmediateToAccumulator => {
                 let word_byte: WordByte = (first_byte & 0b00000001).into();
                 let (data, register, index_increment) = match word_byte {
                     WordByte::Byte => {
@@ -217,6 +219,24 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 };
 
                 let instruction = format!("add {}, {}\n", register, data);
+
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::ImmediateFromAccumulator => {
+                let word_byte: WordByte = (first_byte & 0b00000001).into();
+                let (data, register, index_increment) = match word_byte {
+                    WordByte::Byte => {
+                        let data = machine_code[index + 1] as u16;
+                        (data, "al", 2)
+                    }
+                    WordByte::Word => {
+                        let data = concat_bytes(machine_code[index + 2], machine_code[index + 1]);
+                        (data, "ax", 3)
+                    }
+                };
+
+                let instruction = format!("sub {}, {}\n", register, data);
 
                 result.push_str(&instruction);
                 index += index_increment;

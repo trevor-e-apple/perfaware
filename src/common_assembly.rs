@@ -1,12 +1,14 @@
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone)]
 pub enum OpCode {
-    RegisterImmediateMov = 0b1011,
+    RegisterImmediateMov = 0b101100,
+
     MovMem = 0b100010,
     AddMemMem = 0b000000,
     SubMemMem = 0b001010,
     ImmediateArithmetic = 0b100000,
-    ImmediateAccumulator = 0b000001,
+    ImmediateToAccumulator = 0b000001,
+    ImmediateFromAccumulator = 0b001011,
 }
 
 #[repr(u8)]

@@ -63,3 +63,10 @@ sub [bp + si + 4], bh
 sub [bp + di + 6], di
 sub byte [bx], 34
 sub word [bx + di], 29
+sub ax, [bp]
+sub al, [bx + si]
+sub ax, bx
+sub al, ah
+sub ax, 1000
+sub al, -30
+sub al, 9
