@@ -74,8 +74,15 @@ pub fn arithmetic_diassembly(
     let (instruction, index_increment) = match mode {
         Mode::MemNoDisplacement => {
             let rm_field = second_byte & 0b00000111;
-            let high_byte = machine_code[index + 3];
-            let low_byte = machine_code[index + 2];
+            // TODO: it's unclear to me whether high and low bytes are needed for non-mov instructions
+            let low_byte = match machine_code.get(index + 2) {
+                Some(low_byte) => *low_byte,
+                None => 0,
+            };
+            let high_byte = match machine_code.get(index + 3) {
+                Some(high_byte) => *high_byte,
+                None => 0,
+            };
             let (address_calculation, index_increment) =
                 no_displacement_address(rm_field, high_byte, low_byte);
 

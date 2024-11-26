@@ -25,6 +25,8 @@ fn get_opcode(byte: u8) -> OpCode {
         OpCode::SubMemMem
     } else if first_six_bits == (OpCode::ImmediateFromAccumulator as u8) {
         OpCode::ImmediateFromAccumulator
+    } else if first_six_bits == (OpCode::CmpMemMem as u8) {
+        OpCode::CmpMemMem
     } else {
         panic!("Unexpected opcode");
     }
@@ -112,6 +114,13 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
             OpCode::SubMemMem => {
                 let (instruction, index_increment) =
                     arithmetic_diassembly("sub".to_owned(), &machine_code, index);
+
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::CmpMemMem => {
+                let (instruction, index_increment) =
+                    arithmetic_diassembly("cmp".to_owned(), &machine_code, index);
 
                 result.push_str(&instruction);
                 index += index_increment;
