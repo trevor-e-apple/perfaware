@@ -207,7 +207,11 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
 
                         instruction
                     }
-                    ArithmeticOpCode::Cmp => todo!(),
+                    ArithmeticOpCode::Cmp => {
+                        let instruction = format!("cmp {}, {}\n", dest_arg, immediate);
+
+                        instruction
+                    }
                 };
 
                 result.push_str(&instruction);
