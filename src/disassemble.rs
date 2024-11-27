@@ -137,26 +137,41 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 let second_byte = machine_code[index + 1];
                 let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
                 let arithmetic_code: ArithmeticOpCode = ((second_byte & 0b00111000) >> 3).into();
-                // let rm_field = second_byte & 0b00000111;
-
-                // let third_byte = machine_code[index + 2];
-                // let fourth_byte = machine_code[index + 3];
 
                 let (dest_arg, immediate, index_increment) = match mode {
                     Mode::MemNoDisplacement => {
                         let rm_field = second_byte & 0b00000111;
-                        // TODO: do we need high and low bytes here???
-                        // TODO: we need a better way of unifying no_displacement address...
-                        let (address_calculation, address_increment) =
-                            no_displacement_address_arithmetic(rm_field, 0, 0);
+                        let low_byte = match machine_code.get(index + 2) {
+                            Some(byte) => *byte,
+                            None => 0,
+                        };
+                        let high_byte = match machine_code.get(index + 3) {
+                            Some(byte) => *byte,
+                            None => 0,
+                        };
 
-                        let (immediate, data_increment) =
-                            get_immediate(&machine_code, index, 2, 3, word_byte, sign_extension);
+                        let (address_calculation, address_increment) =
+                            no_displacement_address_arithmetic(rm_field, high_byte, low_byte);
+                        let (low_byte_index, high_byte_index, displacement_bytes) =
+                            if address_increment == 2 {
+                                (2, 3, 0)
+                            } else {
+                                (4, 5, 2)
+                            };
+
+                        let (immediate, data_increment) = get_immediate(
+                            &machine_code,
+                            index,
+                            low_byte_index,
+                            high_byte_index,
+                            word_byte,
+                            sign_extension,
+                        );
 
                         (
                             format!("{} {}", word_byte_string, address_calculation),
                             immediate,
-                            2 + data_increment,
+                            2 + displacement_bytes + data_increment,
                         )
                     }
                     Mode::Mem8BitDisplacement => {

@@ -46,7 +46,7 @@ pub fn no_displacement_address_arithmetic(
         ("[di]".to_owned(), 2)
     } else if rm_field == 0b110 {
         let displacement = concat_bytes(high_byte, low_byte);
-        (format!("{}", displacement), 4)
+        (format!("[{}]", displacement), 4)
     } else if rm_field == 0b111 {
         ("[bx]".to_owned(), 2)
     } else {
