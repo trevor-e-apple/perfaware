@@ -86,3 +86,4 @@ cmp [bp + 0], bx
 cmp [bx + 2], cx
 cmp [bp + si + 4], bh
 cmp [bp + di + 6], di
+cmp byte [bx], 34
