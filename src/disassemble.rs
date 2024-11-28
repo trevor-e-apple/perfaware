@@ -5,6 +5,8 @@ use crate::common_assembly::{
 };
 
 /// get the 6-bit op code from the first byte of an instruction
+/// byte: the byte containing the opcode
+/// returns: an OpCode enum type
 fn get_opcode(byte: u8) -> OpCode {
     let first_four_bits = (byte & 0b11110000) >> 2;
     if first_four_bits == (OpCode::RegisterImmediateMov as u8) {
@@ -33,24 +35,40 @@ fn get_opcode(byte: u8) -> OpCode {
     }
 }
 
-pub fn no_displacement_address(rm_field: u8, high_byte: u8, low_byte: u8) -> (String, usize) {
+/// Returns a string and the number of bytes in the displacement for a no-displacement mov
+/// rm_field: the rm_field
+/// index: The index of the opcode-containing byte
+/// returns: the string for the address and the number of bytes in the displacement (direct address case only)
+pub fn no_displacement_address(
+    rm_field: u8,
+    machine_code: &Vec<u8>,
+    index: usize,
+) -> (String, usize) {
     if rm_field == 0b000 {
-        ("[bx + si]".to_owned(), 2)
+        ("[bx + si]".to_owned(), 0)
     } else if rm_field == 0b001 {
-        ("[bx + di]".to_owned(), 2)
+        ("[bx + di]".to_owned(), 0)
     } else if rm_field == 0b010 {
-        ("[bp + si]".to_owned(), 2)
+        ("[bp + si]".to_owned(), 0)
     } else if rm_field == 0b011 {
-        ("[bp + di]".to_owned(), 2)
+        ("[bp + di]".to_owned(), 0)
     } else if rm_field == 0b100 {
-        ("si".to_owned(), 2)
+        ("si".to_owned(), 0)
     } else if rm_field == 0b101 {
-        ("di".to_owned(), 2)
+        ("di".to_owned(), 0)
     } else if rm_field == 0b110 {
+        let low_byte = match machine_code.get(index + 2) {
+            Some(low_byte) => *low_byte,
+            None => panic!("Failed to fetch low byte for direct address"),
+        };
+        let high_byte = match machine_code.get(index + 3) {
+            Some(high_byte) => *high_byte,
+            None => panic!("Failed to fetch high byte for direct address"),
+        };
         let displacement = concat_bytes(high_byte, low_byte);
-        (format!("{}", displacement), 4)
+        (format!("{}", displacement), 2)
     } else if rm_field == 0b111 {
-        ("bx".to_owned(), 2)
+        ("bx".to_owned(), 0)
     } else {
         panic!("Bad rm field")
     }
@@ -128,17 +146,9 @@ pub fn mem_mem_disassembly(
     let (instruction, index_increment) = match mode {
         Mode::MemNoDisplacement => {
             let rm_field = second_byte & 0b00000111;
-            // TODO: it's unclear to me whether high and low bytes are needed for non-mov instructions
-            let low_byte = match machine_code.get(index + 2) {
-                Some(low_byte) => *low_byte,
-                None => 0,
-            };
-            let high_byte = match machine_code.get(index + 3) {
-                Some(high_byte) => *high_byte,
-                None => 0,
-            };
-            let (address_calculation, index_increment) =
-                no_displacement_address(rm_field, high_byte, low_byte);
+
+            let (address_calculation, displacement_byte_count) =
+                no_displacement_address(rm_field, &machine_code, index);
 
             let (dest, source) = match direction {
                 Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
@@ -147,7 +157,7 @@ pub fn mem_mem_disassembly(
 
             (
                 format!("{} {}, {}\n", assembly_name, dest, source),
-                index_increment,
+                2 + displacement_byte_count,
             )
         }
         Mode::Mem8BitDisplacement => {
