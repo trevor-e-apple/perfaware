@@ -27,6 +27,8 @@ fn get_opcode(byte: u8) -> OpCode {
         OpCode::ImmediateFromAccumulator
     } else if first_six_bits == (OpCode::CmpMemMem as u8) {
         OpCode::CmpMemMem
+    } else if first_six_bits == (OpCode::CmpImmediateToAccumulator as u8) {
+        OpCode::CmpImmediateToAccumulator
     } else {
         panic!("Unexpected opcode");
     }
@@ -265,6 +267,24 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 };
 
                 let instruction = format!("sub {}, {}\n", register, data);
+
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::CmpImmediateToAccumulator => {
+                let word_byte: WordByte = (first_byte & 0b00000001).into();
+                let (data, register, index_increment) = match word_byte {
+                    WordByte::Byte => {
+                        let data = machine_code[index + 1] as u16;
+                        (data, "al", 2)
+                    }
+                    WordByte::Word => {
+                        let data = concat_bytes(machine_code[index + 2], machine_code[index + 1]);
+                        (data, "ax", 3)
+                    }
+                };
+
+                let instruction = format!("cmp {}, {}\n", register, data);
 
                 result.push_str(&instruction);
                 index += index_increment;

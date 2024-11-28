@@ -88,3 +88,10 @@ cmp [bp + si + 4], bh
 cmp [bp + di + 6], di
 cmp byte [bx], 34
 cmp word [4834], 29
+cmp ax, [bp]
+cmp al, [bx + si]
+cmp ax, bx
+cmp al, ah
+cmp ax, 1000
+cmp al, -30
+cmp al, 9

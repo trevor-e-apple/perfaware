@@ -10,6 +10,7 @@ pub enum OpCode {
     ImmediateArithmetic = 0b100000,
     ImmediateToAccumulator = 0b000001,
     ImmediateFromAccumulator = 0b001011,
+    CmpImmediateToAccumulator = 0b001111,
 }
 
 #[repr(u8)]
