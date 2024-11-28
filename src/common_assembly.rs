@@ -170,26 +170,3 @@ impl From<u8> for ArithmeticOpCode {
         }
     }
 }
-
-/// Format the displacement address
-pub fn displacement_address<T: std::fmt::Display>(rm_field: u8, displacement: T) -> String {
-    if rm_field == 0b000 {
-        format!("[bx + si + {}]", displacement)
-    } else if rm_field == 0b001 {
-        format!("[bx + di + {}]", displacement)
-    } else if rm_field == 0b010 {
-        format!("[bp + si + {}]", displacement)
-    } else if rm_field == 0b011 {
-        format!("[bp + di + {}]", displacement)
-    } else if rm_field == 0b100 {
-        format!("[si + {}]", displacement)
-    } else if rm_field == 0b101 {
-        format!("[di + {}]", displacement)
-    } else if rm_field == 0b110 {
-        format!("[bp + {}]", displacement)
-    } else if rm_field == 0b111 {
-        format!("[bx + {}]", displacement)
-    } else {
-        panic!("Bad rm field")
-    }
-}
