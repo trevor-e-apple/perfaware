@@ -37,6 +37,7 @@ fn get_opcode(byte: u8) -> OpCode {
 
 /// Returns a string and the number of bytes in the displacement for a no-displacement mov
 /// rm_field: the rm_field
+/// machine_code: the machine code vector
 /// index: The index of the opcode-containing byte
 /// returns: the string for the address and the number of bytes in the displacement (direct address case only)
 pub fn no_displacement_address(
@@ -74,28 +75,43 @@ pub fn no_displacement_address(
     }
 }
 
+/// Returns a string and the number of bytes in the displacement for a no-displacement arithmetic
+/// instruction. A separate function from the mov version b/c we need brackets around all addresses
+/// returned, not just some.
+/// rm_field: the rm_field
+/// machine_code: the machine code vector
+/// index: The index of the opcode-containing byte
+/// returns: the string for the address and the number of bytes in the displacement (direct address case only)
 pub fn no_displacement_address_arithmetic(
     rm_field: u8,
-    high_byte: u8,
-    low_byte: u8,
+    machine_code: &Vec<u8>,
+    index: usize,
 ) -> (String, usize) {
     if rm_field == 0b000 {
-        ("[bx + si]".to_owned(), 2)
+        ("[bx + si]".to_owned(), 0)
     } else if rm_field == 0b001 {
-        ("[bx + di]".to_owned(), 2)
+        ("[bx + di]".to_owned(), 0)
     } else if rm_field == 0b010 {
-        ("[bp + si]".to_owned(), 2)
+        ("[bp + si]".to_owned(), 0)
     } else if rm_field == 0b011 {
-        ("[bp + di]".to_owned(), 2)
+        ("[bp + di]".to_owned(), 0)
     } else if rm_field == 0b100 {
-        ("[si]".to_owned(), 2)
+        ("[si]".to_owned(), 0)
     } else if rm_field == 0b101 {
-        ("[di]".to_owned(), 2)
+        ("[di]".to_owned(), 0)
     } else if rm_field == 0b110 {
+        let low_byte = match machine_code.get(index + 2) {
+            Some(low_byte) => *low_byte,
+            None => panic!("Failed to fetch low byte for direct address"),
+        };
+        let high_byte = match machine_code.get(index + 3) {
+            Some(high_byte) => *high_byte,
+            None => panic!("Failed to fetch high byte for direct address"),
+        };
         let displacement = concat_bytes(high_byte, low_byte);
-        (format!("[{}]", displacement), 4)
+        (format!("[{}]", displacement), 2)
     } else if rm_field == 0b111 {
-        ("[bx]".to_owned(), 2)
+        ("[bx]".to_owned(), 0)
     } else {
         panic!("Bad rm field")
     }
@@ -344,23 +360,14 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 let (dest_arg, immediate, index_increment) = match mode {
                     Mode::MemNoDisplacement => {
                         let rm_field = second_byte & 0b00000111;
-                        let low_byte = match machine_code.get(index + 2) {
-                            Some(byte) => *byte,
-                            None => 0,
-                        };
-                        let high_byte = match machine_code.get(index + 3) {
-                            Some(byte) => *byte,
-                            None => 0,
-                        };
 
-                        let (address_calculation, address_increment) =
-                            no_displacement_address_arithmetic(rm_field, high_byte, low_byte);
-                        let (low_byte_index, high_byte_index, displacement_bytes) =
-                            if address_increment == 2 {
-                                (2, 3, 0)
-                            } else {
-                                (4, 5, 2)
-                            };
+                        let (address_calculation, displacement_bytes) =
+                            no_displacement_address_arithmetic(rm_field, &machine_code, index);
+
+                        // 2 bytes + displacment bytes is the low data byte
+                        let low_byte_index = 2 + displacement_bytes;
+                        // 2 bytes + displacment bytes + 1 low byte + 1 is the high data byte
+                        let high_byte_index = 3 + displacement_bytes;
 
                         let (immediate, data_increment) = get_immediate(
                             &machine_code,
