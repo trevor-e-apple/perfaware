@@ -1,16 +1,56 @@
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone)]
 pub enum OpCode {
-    RegisterImmediateMov = 0b101100, // final two bits are not relevant
+    // 4 bit op codes - final 4 bits are irrelevant
+    RegisterImmediateMov = 0b10110000,
 
-    MovMem = 0b100010,
-    AddMemMem = 0b000000,
-    SubMemMem = 0b001010,
-    CmpMemMem = 0b001110,
-    ImmediateArithmetic = 0b100000,
-    ImmediateToAccumulator = 0b000001,
-    ImmediateFromAccumulator = 0b001011,
-    CmpImmediateToAccumulator = 0b001111,
+    // 6 bit op codes - final 2 bits are irrelevant
+    MovMem = 0b10001000,
+    AddMemMem = 0b00000000,
+    SubMemMem = 0b00101000,
+    CmpMemMem = 0b00111000,
+    ImmediateArithmetic = 0b10000000,
+    ImmediateToAccumulator = 0b00000100,
+    ImmediateFromAccumulator = 0b00101100,
+    CmpImmediateToAccumulator = 0b00111100,
+
+    // 8 bit opcodes
+    JneJnz = 0b01110101,
+}
+
+/// get the 6-bit op code from the first byte of an instruction
+/// byte: the byte containing the opcode
+/// returns: an OpCode enum type
+pub fn get_opcode(byte: u8) -> OpCode {
+    let first_four_bits = byte & 0b11110000;
+    if first_four_bits == (OpCode::RegisterImmediateMov as u8) {
+        return OpCode::RegisterImmediateMov;
+    }
+
+    let first_six_bits = byte & 0b11111100;
+    if first_six_bits == (OpCode::MovMem as u8) {
+        return OpCode::MovMem;
+    } else if first_six_bits == (OpCode::AddMemMem as u8) {
+        return OpCode::AddMemMem;
+    } else if first_six_bits == (OpCode::ImmediateArithmetic as u8) {
+        return OpCode::ImmediateArithmetic;
+    } else if first_six_bits == (OpCode::ImmediateToAccumulator as u8) {
+        return OpCode::ImmediateToAccumulator;
+    } else if first_six_bits == (OpCode::SubMemMem as u8) {
+        return OpCode::SubMemMem;
+    } else if first_six_bits == (OpCode::ImmediateFromAccumulator as u8) {
+        return OpCode::ImmediateFromAccumulator;
+    } else if first_six_bits == (OpCode::CmpMemMem as u8) {
+        return OpCode::CmpMemMem;
+    } else if first_six_bits == (OpCode::CmpImmediateToAccumulator as u8) {
+        return OpCode::CmpImmediateToAccumulator;
+    }
+
+    if byte == (OpCode::JneJnz as u8) {
+        OpCode::JneJnz
+    } else {
+        panic!("Unexpected opcode");
+    }
 }
 
 #[repr(u8)]

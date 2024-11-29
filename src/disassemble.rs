@@ -1,39 +1,8 @@
 use crate::byte_operations::concat_bytes;
 use crate::common_assembly::{
-    get_register_enum, get_rm_register_field, register_to_assembly_name, ArithmeticOpCode,
-    Direction, Mode, OpCode, WordByte,
+    get_opcode, get_register_enum, get_rm_register_field, register_to_assembly_name,
+    ArithmeticOpCode, Direction, Mode, OpCode, WordByte,
 };
-
-/// get the 6-bit op code from the first byte of an instruction
-/// byte: the byte containing the opcode
-/// returns: an OpCode enum type
-fn get_opcode(byte: u8) -> OpCode {
-    let first_four_bits = (byte & 0b11110000) >> 2;
-    if first_four_bits == (OpCode::RegisterImmediateMov as u8) {
-        return OpCode::RegisterImmediateMov;
-    }
-
-    let first_six_bits = (byte & 0b11111100) >> 2;
-    if first_six_bits == (OpCode::MovMem as u8) {
-        OpCode::MovMem
-    } else if first_six_bits == (OpCode::AddMemMem as u8) {
-        OpCode::AddMemMem
-    } else if first_six_bits == (OpCode::ImmediateArithmetic as u8) {
-        OpCode::ImmediateArithmetic
-    } else if first_six_bits == (OpCode::ImmediateToAccumulator as u8) {
-        OpCode::ImmediateToAccumulator
-    } else if first_six_bits == (OpCode::SubMemMem as u8) {
-        OpCode::SubMemMem
-    } else if first_six_bits == (OpCode::ImmediateFromAccumulator as u8) {
-        OpCode::ImmediateFromAccumulator
-    } else if first_six_bits == (OpCode::CmpMemMem as u8) {
-        OpCode::CmpMemMem
-    } else if first_six_bits == (OpCode::CmpImmediateToAccumulator as u8) {
-        OpCode::CmpImmediateToAccumulator
-    } else {
-        panic!("Unexpected opcode");
-    }
-}
 
 /// Returns a string and the number of bytes in the displacement for a no-displacement mov
 /// rm_field: the rm_field
@@ -462,6 +431,9 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                     accumulator_arithmetic("cmp", &machine_code, index);
                 result.push_str(&instruction);
                 index += index_increment;
+            }
+            OpCode::JneJnz => {
+                todo!("Not yet implemented")
             }
         }
     }
