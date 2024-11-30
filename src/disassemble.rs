@@ -433,7 +433,10 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 index += index_increment;
             }
             OpCode::JneJnz => {
-                todo!("Not yet implemented")
+                let signed_displacement = machine_code[index + 1] as i8;
+                let instruction = format!("jnz $ + 2 + {}\n", signed_displacement);
+                result.push_str(&instruction);
+                index += 2;
             }
         }
     }

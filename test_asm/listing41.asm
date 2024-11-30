@@ -95,3 +95,10 @@ cmp al, ah
 cmp ax, 1000
 cmp al, -30
 cmp al, 9
+
+test_label0:
+jnz test_label1
+jnz test_label0
+test_label1:
+jnz test_label0
+jnz test_label1
