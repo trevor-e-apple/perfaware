@@ -248,6 +248,13 @@ fn get_immediate(
     }
 }
 
+fn jump_opcode(machine_code: &Vec<u8>, index: usize, operation: &str) -> (String, usize) {
+    let signed_displacement = machine_code[index + 1] as i8;
+    let instruction = format!("{} $ + 2 + {}\n", operation, signed_displacement);
+
+    (instruction, 2)
+}
+
 /// perform disassembly
 pub fn disassemble(machine_code: Vec<u8>) -> String {
     let mut result = "bits 16\n".to_owned();
@@ -433,10 +440,39 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 index += index_increment;
             }
             OpCode::JneJnz => {
-                let signed_displacement = machine_code[index + 1] as i8;
-                let instruction = format!("jnz $ + 2 + {}\n", signed_displacement);
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jnz");
                 result.push_str(&instruction);
-                index += 2;
+                index += index_increment;
+            }
+            OpCode::Je => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "je");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Jl => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jl");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Jle => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jle");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Jb => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jb");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Jbe => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jbe");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Jp => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jp");
+                result.push_str(&instruction);
+                index += index_increment;
             }
         }
     }

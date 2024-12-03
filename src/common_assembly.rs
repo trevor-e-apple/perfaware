@@ -16,6 +16,12 @@ pub enum OpCode {
 
     // 8 bit opcodes
     JneJnz = 0b01110101,
+    Je = 0b01110100,
+    Jl = 0b01111100,
+    Jle = 0b01111110,
+    Jb = 0b01110010,
+    Jbe = 0b01110110,
+    Jp = 0b01111010,
 }
 
 /// get the 6-bit op code from the first byte of an instruction
@@ -48,6 +54,18 @@ pub fn get_opcode(byte: u8) -> OpCode {
 
     if byte == (OpCode::JneJnz as u8) {
         OpCode::JneJnz
+    } else if byte == (OpCode::Je as u8) {
+        OpCode::Je
+    } else if byte == (OpCode::Jl as u8) {
+        OpCode::Jl
+    } else if byte == (OpCode::Jle as u8) {
+        OpCode::Jle
+    } else if byte == (OpCode::Jb as u8) {
+        OpCode::Jb
+    } else if byte == (OpCode::Jbe as u8) {
+        OpCode::Jbe
+    } else if byte == (OpCode::Jp as u8) {
+        OpCode::Jp
     } else {
         panic!("Unexpected opcode");
     }
