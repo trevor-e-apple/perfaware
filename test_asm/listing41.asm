@@ -110,3 +110,14 @@ jle label
 jb label
 jbe label
 jp label
+jo label
+js label
+jne label
+jnl label
+jg label
+jnb label
+ja label
+jnp label
+jno label
+jns label
+loop label

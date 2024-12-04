@@ -474,6 +474,56 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 result.push_str(&instruction);
                 index += index_increment;
             }
+            OpCode::Jo => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jo");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Js => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "js");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Jnl => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jnl");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Jg => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jg");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Jnb => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jnb");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Ja => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "ja");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Jnp => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jnp");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Jno => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jno");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Jns => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jns");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Loop => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "loop");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
         }
     }
 
