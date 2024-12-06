@@ -524,6 +524,16 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 result.push_str(&instruction);
                 index += index_increment;
             }
+            OpCode::Loopz => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "loopz");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
+            OpCode::Loopnz => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "loopnz");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
         }
     }
 
