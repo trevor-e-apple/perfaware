@@ -534,6 +534,11 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                 result.push_str(&instruction);
                 index += index_increment;
             }
+            OpCode::Jcxz => {
+                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jcxz");
+                result.push_str(&instruction);
+                index += index_increment;
+            }
         }
     }
 

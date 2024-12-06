@@ -34,6 +34,7 @@ pub enum OpCode {
     Loop = 0b11100010,
     Loopz = 0b11100001,
     Loopnz = 0b11100000,
+    Jcxz = 0b11100011,
 }
 
 /// get the 6-bit op code from the first byte of an instruction
@@ -102,6 +103,8 @@ pub fn get_opcode(byte: u8) -> OpCode {
         OpCode::Loopz
     } else if byte == (OpCode::Loopnz as u8) {
         OpCode::Loopnz
+    } else if byte == (OpCode::Jcxz as u8) {
+        OpCode::Jcxz
     } else {
         panic!("Unexpected opcode");
     }
