@@ -153,10 +153,16 @@ const TO_REGISTER: [Register; 16] = [
     Register::Di,
 ];
 
+/// takes the register_field and returns the register enum
+/// register_field: the register field. Up to 3 bits.
+/// word_byte_field: enum indicating the contents of the word/byte field
 pub fn get_register_enum(register_field: u8, word_byte_field: WordByte) -> Register {
     TO_REGISTER[(register_field as usize) + (8 * (word_byte_field as usize))]
 }
 
+/// takes a byte and interprets the three least-significant bits as the register field
+/// byte: the byte to collect the data from
+/// word_byte_field: enum indicating the contents of the word/byte field
 pub fn get_rm_register_field(byte: u8, word_byte_field: WordByte) -> Register {
     let register_field = byte & 0b00000111;
     get_register_enum(register_field, word_byte_field)
