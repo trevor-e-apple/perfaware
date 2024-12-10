@@ -18,6 +18,7 @@ pub struct SimulationState {
 }
 
 impl SimulationState {
+    /// sets the value of a register. Note that we don't currently support writing to half registers
     pub fn set_register_value(&mut self, register: Register, value: u16) {
         match register {
             Register::Ax => {
@@ -48,15 +49,6 @@ impl SimulationState {
         };
     }
 
-    /*
-            pub ax: u16,
-    pub bx: u16,
-    pub cx: u16,
-    pub dx: u16,
-    pub sp: u16,
-    pub bp: u16,
-    pub si: u16,
-    pub di: u16, */
     pub fn pretty_string(&self) -> String {
         format!(
             "ax: {:#06X}({})\nbx: {:#06X}({})\ncx: {:#06X}({})\ndx: {:#06X}({})\nsp: {:#06X}({})\nbp: {:#06X}({})\nsi: {:#06X}({})\ndi: {:#06X}({})\n",
