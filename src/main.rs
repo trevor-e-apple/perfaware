@@ -1,6 +1,7 @@
 mod byte_operations;
 mod common_assembly;
 mod disassemble;
+mod simulator_state;
 
 use std::{
     env,

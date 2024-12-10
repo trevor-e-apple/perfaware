@@ -3,6 +3,7 @@ use crate::common_assembly::{
     get_opcode, get_register_enum, get_rm_register_field, register_to_assembly_name,
     ArithmeticOpCode, Direction, Mode, OpCode, WordByte,
 };
+use crate::simulator_state::{get_sim_state_diff, SimulationState};
 
 /// Returns a string and the number of bytes in the displacement for a no-displacement mov
 /// rm_field: the rm_field
@@ -220,6 +221,13 @@ fn accumulator_arithmetic(
     (instruction, index_increment)
 }
 
+/// Get the immediate from the instruction and return both it and the number of bytes in the immediate value
+/// machine_code: the vector containing all of the machine code
+/// index: the index of the first byte in the instruction
+/// low_byte_index: the index of the less significant byte. Will not be used if immediate is single byte
+/// high_byte_index: the index of the more significant byte. Will not be used if immediate is single byte
+/// word_byte: the word/byte field enum
+/// sign_extension: the sign_extension field
 fn get_immediate(
     machine_code: &Vec<u8>,
     index: usize,
@@ -248,24 +256,37 @@ fn get_immediate(
     }
 }
 
+/// Common function for jump opcodes
+/// machine_code: the vector containing all of our machine code
+/// index: the index of the first byte of the instruction
+/// operation: the jump operation string
 fn jump_opcode(machine_code: &Vec<u8>, index: usize, operation: &str) -> (String, usize) {
+    // NOTE: if you were interested, you could pass in the opcode enum, convert it into a usize, and lookup
+    // -- into a table that includes all of the operation strings. You could then use pattern matching
+    // -- and inline this function into the different jump opcodes
     let signed_displacement = machine_code[index + 1] as i8;
     let instruction = format!("{} $ + 2 + {}\n", operation, signed_displacement);
 
     (instruction, 2)
 }
 
-/// perform disassembly
+/// perform disassembly. returns a disassembly string. Also performs a simulation of executing all of
+/// the instructions
 pub fn disassemble(machine_code: Vec<u8>) -> String {
     let mut result = "bits 16\n".to_owned();
+    let mut sim_state = SimulationState {
+        ..Default::default()
+    };
 
     let mut index = 0;
 
     while index < machine_code.len() {
+        let previous_state = sim_state.clone();
+
         let first_byte = machine_code[index];
         let opcode = get_opcode(first_byte);
 
-        match opcode {
+        let (mut instruction, index_increment) = match opcode {
             OpCode::RegisterImmediateMov => {
                 let word_byte: WordByte = ((first_byte & 0b00001000) >> 3).into();
                 let register_field = first_byte & 0b00000111;
@@ -287,39 +308,17 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                     immediate
                 );
 
-                result.push_str(&instruction);
-
                 // 1 byte for the opcode + the number of bytes in the immediate
-                index += immediate_bytes + 1;
-            }
-            OpCode::MovMem => {
-                let (instruction, index_increment) =
-                    mem_mem_disassembly("mov".to_owned(), &machine_code, index);
+                let index_increment = immediate_bytes + 1;
 
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::AddMemMem => {
-                let (instruction, index_increment) =
-                    mem_mem_disassembly("add".to_owned(), &machine_code, index);
+                sim_state.set_register_value(register, immediate);
 
-                result.push_str(&instruction);
-                index += index_increment;
+                (instruction, index_increment)
             }
-            OpCode::SubMemMem => {
-                let (instruction, index_increment) =
-                    mem_mem_disassembly("sub".to_owned(), &machine_code, index);
-
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::CmpMemMem => {
-                let (instruction, index_increment) =
-                    mem_mem_disassembly("cmp".to_owned(), &machine_code, index);
-
-                result.push_str(&instruction);
-                index += index_increment;
-            }
+            OpCode::MovMem => mem_mem_disassembly("mov".to_owned(), &machine_code, index),
+            OpCode::AddMemMem => mem_mem_disassembly("add".to_owned(), &machine_code, index),
+            OpCode::SubMemMem => mem_mem_disassembly("sub".to_owned(), &machine_code, index),
+            OpCode::CmpMemMem => mem_mem_disassembly("cmp".to_owned(), &machine_code, index),
             OpCode::ImmediateArithmetic => {
                 let word_byte: WordByte = (first_byte & 0b00000001).into();
                 let word_byte_string = match word_byte {
@@ -415,132 +414,47 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
                     }
                 };
 
-                result.push_str(&instruction);
-
-                index += index_increment;
+                (instruction, index_increment)
             }
-            OpCode::ImmediateToAccumulator => {
-                let (instruction, index_increment) =
-                    accumulator_arithmetic("add", &machine_code, index);
-
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::ImmediateFromAccumulator => {
-                let (instruction, index_increment) =
-                    accumulator_arithmetic("sub", &machine_code, index);
-
-                result.push_str(&instruction);
-                index += index_increment;
-            }
+            OpCode::ImmediateToAccumulator => accumulator_arithmetic("add", &machine_code, index),
+            OpCode::ImmediateFromAccumulator => accumulator_arithmetic("sub", &machine_code, index),
             OpCode::CmpImmediateToAccumulator => {
-                let (instruction, index_increment) =
-                    accumulator_arithmetic("cmp", &machine_code, index);
-                result.push_str(&instruction);
-                index += index_increment;
+                accumulator_arithmetic("cmp", &machine_code, index)
             }
-            OpCode::JneJnz => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jnz");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Je => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "je");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jl => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jl");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jle => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jle");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jb => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jb");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jbe => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jbe");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jp => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jp");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jo => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jo");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Js => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "js");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jnl => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jnl");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jg => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jg");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jnb => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jnb");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Ja => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "ja");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jnp => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jnp");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jno => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jno");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jns => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jns");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Loop => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "loop");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Loopz => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "loopz");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Loopnz => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "loopnz");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-            OpCode::Jcxz => {
-                let (instruction, index_increment) = jump_opcode(&machine_code, index, "jcxz");
-                result.push_str(&instruction);
-                index += index_increment;
-            }
-        }
+            OpCode::JneJnz => jump_opcode(&machine_code, index, "jnz"),
+            OpCode::Je => jump_opcode(&machine_code, index, "je"),
+            OpCode::Jl => jump_opcode(&machine_code, index, "jl"),
+            OpCode::Jle => jump_opcode(&machine_code, index, "jle"),
+            OpCode::Jb => jump_opcode(&machine_code, index, "jb"),
+            OpCode::Jbe => jump_opcode(&machine_code, index, "jbe"),
+            OpCode::Jp => jump_opcode(&machine_code, index, "jp"),
+            OpCode::Jo => jump_opcode(&machine_code, index, "jo"),
+            OpCode::Js => jump_opcode(&machine_code, index, "js"),
+            OpCode::Jnl => jump_opcode(&machine_code, index, "jnl"),
+            OpCode::Jg => jump_opcode(&machine_code, index, "jg"),
+            OpCode::Jnb => jump_opcode(&machine_code, index, "jnb"),
+            OpCode::Ja => jump_opcode(&machine_code, index, "ja"),
+            OpCode::Jnp => jump_opcode(&machine_code, index, "jnp"),
+            OpCode::Jno => jump_opcode(&machine_code, index, "jno"),
+            OpCode::Jns => jump_opcode(&machine_code, index, "jns"),
+            OpCode::Loop => jump_opcode(&machine_code, index, "loop"),
+            OpCode::Loopz => jump_opcode(&machine_code, index, "loopz"),
+            OpCode::Loopnz => jump_opcode(&machine_code, index, "loopnz"),
+            OpCode::Jcxz => jump_opcode(&machine_code, index, "jcxz"),
+        };
+
+        result.push_str(&instruction);
+        index += index_increment;
+
+        // remove newline from instruction
+        instruction.truncate(instruction.len() - 1);
+
+        let state_diff = get_sim_state_diff(&previous_state, &sim_state);
+        print!("{} ; {}", &instruction, state_diff);
     }
 
+    println!("Final registers:");
+    print!("{}", sim_state.pretty_string());
+    println!("");
     result
 }

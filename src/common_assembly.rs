@@ -168,6 +168,7 @@ pub fn get_rm_register_field(byte: u8, word_byte_field: WordByte) -> Register {
     get_register_enum(register_field, word_byte_field)
 }
 
+/// Takes a register enum and returns the string reflecting the name in assembly
 pub fn register_to_assembly_name(register: Register) -> String {
     match register {
         Register::Al => "al".to_owned(),
