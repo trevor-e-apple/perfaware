@@ -8,7 +8,7 @@ use std::{
     fs::{self, remove_file, File},
     io::Write,
     iter::zip,
-    path::Path,
+    path::{Path, PathBuf},
     process::Command,
 };
 
@@ -36,26 +36,41 @@ fn run_nasm(path: &str, outpath: &str) {
 fn main() {
     // get args
     let args: Vec<String> = env::args().collect();
-    let directory = &args[1];
+    let target = &args[1];
+    let path = Path::new(target);
 
-    let dir_path = Path::new(directory);
-    for dir_entry in fs::read_dir(directory).unwrap() {
-        let dir_entry = dir_entry.unwrap();
-        if dir_entry.path().extension().unwrap().to_str().unwrap() != "asm" {
+    let (dir_path, file_paths) = match fs::read_dir(path) {
+        Ok(dir_iter) => {
+            let mut file_paths: Vec<PathBuf> = Vec::new();
+            for dir_entry in dir_iter {
+                match dir_entry {
+                    Ok(file_path) => {
+                        file_paths.push(file_path.path().to_path_buf());
+                    }
+                    Err(_) => {}
+                }
+            }
+            (path, file_paths)
+        }
+        Err(_) => {
+            if path.is_file() {
+                let parent_path = path.parent().unwrap();
+                (parent_path, vec![path.to_path_buf()])
+            } else {
+                std::process::exit(1)
+            }
+        }
+    };
+
+    for file_path in file_paths {
+        if file_path.extension().unwrap().to_str().unwrap() != "asm" {
             continue;
         }
 
-        let original_asm_path = dir_entry.path().into_os_string().into_string().unwrap();
+        let original_asm_path = file_path.clone().into_os_string().into_string().unwrap();
         println!("Testing {}", &original_asm_path);
 
-        let file_name_no_extension = {
-            let with_extension = dir_entry.file_name().into_string().unwrap();
-            Path::file_stem(Path::new(&with_extension))
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_owned()
-        };
+        let file_name_no_extension = file_path.file_stem().unwrap().to_str().unwrap().to_owned();
 
         let original_outpath = {
             let file_name = format!("{}.bin", &file_name_no_extension);
