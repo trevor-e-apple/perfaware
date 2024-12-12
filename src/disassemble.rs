@@ -115,10 +115,19 @@ pub fn rm_field_to_displacement<T: std::fmt::Display>(rm_field: u8, displacement
 /// get the disassembly string and the number of bytes that were a part of the instruction for
 /// any disassembly with the form [opcode:6 d:1 w:1] [mod:2 reg:3 rm:3] [disp-lo] [disp-hi]
 pub fn mem_mem_disassembly(
-    assembly_name: String,
+    opcode: OpCode,
     machine_code: &Vec<u8>,
     index: usize,
+    sim_state: &mut SimulationState,
 ) -> (String, usize) {
+    let assembly_mnemonic = match opcode {
+        OpCode::MovMem => "mov".to_owned(),
+        OpCode::AddMemMem => "add".to_owned(),
+        OpCode::SubMemMem => "sub".to_owned(),
+        OpCode::CmpMemMem => "cmp".to_owned(),
+        _ => panic!("Unexpected opcode for mem to mem instruction"),
+    };
+
     let first_byte = machine_code[index];
 
     let direction: Direction = ((first_byte & 0b00000010) >> 1).into();
@@ -142,7 +151,7 @@ pub fn mem_mem_disassembly(
             };
 
             (
-                format!("{} {}, {}\n", assembly_name, dest, source),
+                format!("{} {}, {}\n", assembly_mnemonic, dest, source),
                 2 + displacement_byte_count,
             )
         }
@@ -156,7 +165,7 @@ pub fn mem_mem_disassembly(
                 Direction::RmReg => (register_to_assembly_name(register), address_calculation),
             };
 
-            (format!("{} {}, {}\n", assembly_name, dest, source), 3)
+            (format!("{} {}, {}\n", assembly_mnemonic, dest, source), 3)
         }
         Mode::Mem16BitDisplacement => {
             let rm_field = second_byte & 0b0000111;
@@ -168,7 +177,7 @@ pub fn mem_mem_disassembly(
                 Direction::RmReg => (register_to_assembly_name(register), address_calculation),
             };
 
-            (format!("{} {}, {}\n", assembly_name, dest, source), 4)
+            (format!("{} {}, {}\n", assembly_mnemonic, dest, source), 4)
         }
         Mode::Register => {
             let second_register = get_rm_register_field(second_byte, word_byte);
@@ -178,10 +187,22 @@ pub fn mem_mem_disassembly(
                 Direction::RmReg => (second_register, register),
             };
 
+            // update simstate for register to register mem mov
+            match opcode {
+                OpCode::MovMem => {
+                    let value = sim_state.get_register_value(src_register);
+                    sim_state.set_register_value(dest_register, value);
+                }
+                OpCode::AddMemMem => todo!(),
+                OpCode::SubMemMem => todo!(),
+                OpCode::CmpMemMem => todo!(),
+                _ => panic!("Unexpected opcode for mem to mem instruction"),
+            };
+
             (
                 format!(
                     "{} {}, {}\n",
-                    assembly_name,
+                    assembly_mnemonic,
                     register_to_assembly_name(dest_register),
                     register_to_assembly_name(src_register)
                 ),
@@ -315,10 +336,18 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
 
                 (instruction, index_increment)
             }
-            OpCode::MovMem => mem_mem_disassembly("mov".to_owned(), &machine_code, index),
-            OpCode::AddMemMem => mem_mem_disassembly("add".to_owned(), &machine_code, index),
-            OpCode::SubMemMem => mem_mem_disassembly("sub".to_owned(), &machine_code, index),
-            OpCode::CmpMemMem => mem_mem_disassembly("cmp".to_owned(), &machine_code, index),
+            OpCode::MovMem => {
+                mem_mem_disassembly(OpCode::MovMem, &machine_code, index, &mut sim_state)
+            }
+            OpCode::AddMemMem => {
+                mem_mem_disassembly(OpCode::AddMemMem, &machine_code, index, &mut sim_state)
+            }
+            OpCode::SubMemMem => {
+                mem_mem_disassembly(OpCode::SubMemMem, &machine_code, index, &mut sim_state)
+            }
+            OpCode::CmpMemMem => {
+                mem_mem_disassembly(OpCode::CmpMemMem, &machine_code, index, &mut sim_state)
+            }
             OpCode::ImmediateArithmetic => {
                 let word_byte: WordByte = (first_byte & 0b00000001).into();
                 let word_byte_string = match word_byte {

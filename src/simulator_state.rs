@@ -18,6 +18,27 @@ pub struct SimulationState {
 }
 
 impl SimulationState {
+    pub fn get_register_value(&self, register: Register) -> u16 {
+        match register {
+            Register::Al => todo!(),
+            Register::Cl => todo!(),
+            Register::Dl => todo!(),
+            Register::Bl => todo!(),
+            Register::Ah => todo!(),
+            Register::Ch => todo!(),
+            Register::Dh => todo!(),
+            Register::Bh => todo!(),
+            Register::Ax => self.ax,
+            Register::Cx => self.cx,
+            Register::Dx => self.dx,
+            Register::Bx => self.bx,
+            Register::Sp => self.sp,
+            Register::Bp => self.bp,
+            Register::Si => self.si,
+            Register::Di => self.di,
+        }
+    }
+
     /// sets the value of a register. Note that we don't currently support writing to half registers
     pub fn set_register_value(&mut self, register: Register, value: u16) {
         match register {
