@@ -193,9 +193,9 @@ pub fn mem_mem_disassembly(
                     let value = sim_state.get_register_value(src_register);
                     sim_state.set_register_value(dest_register, value);
                 }
-                OpCode::AddMemMem => todo!(),
-                OpCode::SubMemMem => todo!(),
-                OpCode::CmpMemMem => todo!(),
+                OpCode::AddMemMem => {}
+                OpCode::SubMemMem => {}
+                OpCode::CmpMemMem => {}
                 _ => panic!("Unexpected opcode for mem to mem instruction"),
             };
 
@@ -293,8 +293,9 @@ fn jump_opcode(machine_code: &Vec<u8>, index: usize, operation: &str) -> (String
 
 /// perform disassembly. returns a disassembly string. Also performs a simulation of executing all of
 /// the instructions
-pub fn disassemble(machine_code: Vec<u8>) -> String {
+pub fn disassemble(machine_code: Vec<u8>) -> (String, String) {
     let mut result = "bits 16\n".to_owned();
+    let mut sim_log = "".to_owned();
     let mut sim_state = SimulationState {
         ..Default::default()
     };
@@ -479,11 +480,11 @@ pub fn disassemble(machine_code: Vec<u8>) -> String {
         instruction.truncate(instruction.len() - 1);
 
         let state_diff = get_sim_state_diff(&previous_state, &sim_state);
-        print!("{} ; {}", &instruction, state_diff);
+        sim_log.push_str(&format!("{} ; {}", &instruction, state_diff));
     }
 
-    println!("Final registers:");
-    print!("{}", sim_state.pretty_string());
-    println!("");
-    result
+    sim_log.push_str(&format!("Final registers:\n"));
+    sim_log.push_str(&format!("{}\n", sim_state.pretty_string()));
+
+    (result, sim_log)
 }

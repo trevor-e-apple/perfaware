@@ -20,14 +20,14 @@ pub struct SimulationState {
 impl SimulationState {
     pub fn get_register_value(&self, register: Register) -> u16 {
         match register {
-            Register::Al => todo!(),
-            Register::Cl => todo!(),
-            Register::Dl => todo!(),
-            Register::Bl => todo!(),
-            Register::Ah => todo!(),
-            Register::Ch => todo!(),
-            Register::Dh => todo!(),
-            Register::Bh => todo!(),
+            Register::Al => 0,
+            Register::Cl => 0,
+            Register::Dl => 0,
+            Register::Bl => 0,
+            Register::Ah => 0,
+            Register::Ch => 0,
+            Register::Dh => 0,
+            Register::Bh => 0,
             Register::Ax => self.ax,
             Register::Cx => self.cx,
             Register::Dx => self.dx,

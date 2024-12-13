@@ -12,6 +12,8 @@ use std::{
     process::Command,
 };
 
+use argparse;
+use argparse::ArgumentParser;
 use disassemble::disassemble;
 
 fn run_nasm(path: &str, outpath: &str) {
@@ -35,9 +37,30 @@ fn run_nasm(path: &str, outpath: &str) {
 
 fn main() {
     // get args
-    let args: Vec<String> = env::args().collect();
-    let target = &args[1];
-    let path = Path::new(target);
+    let mut target = "".to_owned();
+    let mut print_disassemble = false;
+    let mut print_simulate = false;
+
+    {
+        // this block limits scope of borrows by ap.refer() method
+        let mut ap = ArgumentParser::new();
+        ap.set_description("Disassemble and/or simulate 8086 instructions");
+        ap.refer(&mut target).add_argument(
+            "target",
+            argparse::Store,
+            "The directory / file to target",
+        );
+        ap.refer(&mut print_disassemble)
+            .add_option(&["--disassemble"], argparse::StoreTrue, "Whether or not to print out the results of a diff between nasm assembly and disassembly");
+        ap.refer(&mut print_simulate).add_option(
+            &["--simulate"],
+            argparse::StoreTrue,
+            "Whether or not to print out the results of the program simulation",
+        );
+        ap.parse_args_or_exit();
+    }
+
+    let path = Path::new(&target);
 
     let (dir_path, file_paths) = match fs::read_dir(path) {
         Ok(dir_iter) => {
@@ -84,7 +107,7 @@ fn main() {
         run_nasm(&original_asm_path, &original_outpath);
 
         // disassemble with our disassembler
-        let (gen_asm_path, gen_outpath) = {
+        let (gen_asm_path, gen_outpath, simulation_log) = {
             // read assembler output
             let contents = match fs::read(&original_outpath) {
                 Ok(contents) => contents,
@@ -94,7 +117,7 @@ fn main() {
                     return;
                 }
             };
-            let disassembly = disassemble(contents);
+            let (disassembly, simulation_log) = disassemble(contents);
 
             let gen_asm_name = format!("{}_test_gen.asm", file_name_no_extension);
             let gen_asm_path = Path::join(dir_path, gen_asm_name);
@@ -114,6 +137,7 @@ fn main() {
             (
                 gen_asm_path.into_os_string().into_string().unwrap(),
                 gen_outpath,
+                simulation_log,
             )
         };
 
@@ -141,7 +165,15 @@ fn main() {
         if test_passed {
             remove_file(&gen_asm_path).expect("Unable to remove gen asm");
             remove_file(&gen_outpath).expect("Unable to remove gen binary");
-            println!("Test passed");
+
+            if print_disassemble {
+                println!("Test passed");
+            }
+        }
+
+        if print_simulate {
+            println!("Simulation results:");
+            print!("{}", simulation_log);
         }
     }
 }
