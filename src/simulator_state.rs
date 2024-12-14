@@ -20,14 +20,14 @@ pub struct SimulationState {
 impl SimulationState {
     pub fn get_register_value(&self, register: Register) -> u16 {
         match register {
-            Register::Al => 0,
-            Register::Cl => 0,
-            Register::Dl => 0,
-            Register::Bl => 0,
-            Register::Ah => 0,
-            Register::Ch => 0,
-            Register::Dh => 0,
-            Register::Bh => 0,
+            Register::Al => self.ax & 0xFF,
+            Register::Cl => self.cx & 0xFF,
+            Register::Dl => self.dx & 0xFF,
+            Register::Bl => self.bx & 0xFF,
+            Register::Ah => (self.ax & 0xFF00) >> 8,
+            Register::Ch => (self.cx & 0xFF00) >> 8,
+            Register::Dh => (self.dx & 0xFF00) >> 8,
+            Register::Bh => (self.bx & 0xFF00) >> 8,
             Register::Ax => self.ax,
             Register::Cx => self.cx,
             Register::Dx => self.dx,
@@ -42,6 +42,30 @@ impl SimulationState {
     /// sets the value of a register. Note that we don't currently support writing to half registers
     pub fn set_register_value(&mut self, register: Register, value: u16) {
         match register {
+            Register::Al => {
+                self.ax = (self.ax | 0xFF) & ((value & 0xFF) | 0xFF00);
+            }
+            Register::Cl => {
+                self.cx = (self.cx | 0xFF) & ((value & 0xFF) | 0xFF00);
+            }
+            Register::Dl => {
+                self.dx = (self.dx | 0xFF) & ((value & 0xFF) | 0xFF00);
+            }
+            Register::Bl => {
+                self.bx = (self.bx | 0xFF) & ((value & 0xFF) | 0xFF00);
+            }
+            Register::Ah => {
+                self.ax = (self.ax | 0xFF00) & ((value << 8) | 0x00FF);
+            }
+            Register::Ch => {
+                self.cx = (self.cx | 0xFF00) & ((value << 8) | 0x00FF);
+            }
+            Register::Dh => {
+                self.dx = (self.dx | 0xFF00) & ((value << 8) | 0x00FF);
+            }
+            Register::Bh => {
+                self.bx = (self.bx | 0xFF00) & ((value << 8) | 0x00FF);
+            }
             Register::Ax => {
                 self.ax = value;
             }
@@ -98,28 +122,28 @@ pub fn get_sim_state_diff(before: &SimulationState, after: &SimulationState) -> 
     let mut result = String::new();
 
     if before.ax != after.ax {
-        result.push_str(&format!("ax: {} -> {}\n", before.ax, after.ax));
+        result.push_str(&format!("ax: {:#06X} -> {:#06X}\n", before.ax, after.ax));
     }
     if before.bx != after.bx {
-        result.push_str(&format!("bx: {} -> {}\n", before.bx, after.bx));
+        result.push_str(&format!("bx: {:#06X} -> {:#06X}\n", before.bx, after.bx));
     }
     if before.cx != after.cx {
-        result.push_str(&format!("cx: {} -> {}\n", before.cx, after.cx));
+        result.push_str(&format!("cx: {:#06X} -> {:#06X}\n", before.cx, after.cx));
     }
     if before.dx != after.dx {
-        result.push_str(&format!("dx: {} -> {}\n", before.dx, after.dx));
+        result.push_str(&format!("dx: {:#06X} -> {:#06X}\n", before.dx, after.dx));
     }
     if before.sp != after.sp {
-        result.push_str(&format!("sp: {} -> {}\n", before.sp, after.sp));
+        result.push_str(&format!("sp: {:#06X} -> {:#06X}\n", before.sp, after.sp));
     }
     if before.bp != after.bp {
-        result.push_str(&format!("bp: {} -> {}\n", before.bp, after.bp));
+        result.push_str(&format!("bp: {:#06X} -> {:#06X}\n", before.bp, after.bp));
     }
     if before.si != after.si {
-        result.push_str(&format!("si: {} -> {}\n", before.si, after.si));
+        result.push_str(&format!("si: {:#06X} -> {:#06X}\n", before.si, after.si));
     }
     if before.di != after.di {
-        result.push_str(&format!("di: {} -> {}\n", before.di, after.di));
+        result.push_str(&format!("di: {:#06X} -> {:#06X}\n", before.di, after.di));
     }
 
     result
