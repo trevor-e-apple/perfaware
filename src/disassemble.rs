@@ -3,7 +3,6 @@ use crate::common_assembly::{
     get_opcode, get_register_enum, get_rm_register_field, register_to_assembly_name,
     ArithmeticOpCode, Direction, Mode, OpCode, WordByte,
 };
-use crate::simulator_state::{get_sim_state_diff, SimulationState};
 
 /// Returns a string and the number of bytes in the displacement for a no-displacement mov
 /// rm_field: the rm_field
@@ -118,7 +117,6 @@ pub fn mem_mem_disassembly(
     opcode: OpCode,
     machine_code: &Vec<u8>,
     index: usize,
-    sim_state: &mut SimulationState,
 ) -> (String, usize) {
     let assembly_mnemonic = match opcode {
         OpCode::MovMem => "mov".to_owned(),
@@ -185,18 +183,6 @@ pub fn mem_mem_disassembly(
             let (src_register, dest_register) = match direction {
                 Direction::RegRm => (register, second_register),
                 Direction::RmReg => (second_register, register),
-            };
-
-            // update simstate for register to register mem mov
-            match opcode {
-                OpCode::MovMem => {
-                    let value = sim_state.get_register_value(src_register);
-                    sim_state.set_register_value(dest_register, value);
-                }
-                OpCode::AddMemMem => {}
-                OpCode::SubMemMem => {}
-                OpCode::CmpMemMem => {}
-                _ => panic!("Unexpected opcode for mem to mem instruction"),
             };
 
             (
@@ -293,18 +279,12 @@ fn jump_opcode(machine_code: &Vec<u8>, index: usize, operation: &str) -> (String
 
 /// perform disassembly. returns a disassembly string. Also performs a simulation of executing all of
 /// the instructions
-pub fn disassemble(machine_code: Vec<u8>) -> (String, String) {
+pub fn disassemble(machine_code: &Vec<u8>) -> String {
     let mut result = "bits 16\n".to_owned();
-    let mut sim_log = "".to_owned();
-    let mut sim_state = SimulationState {
-        ..Default::default()
-    };
 
     let mut index = 0;
 
     while index < machine_code.len() {
-        let previous_state = sim_state.clone();
-
         let first_byte = machine_code[index];
         let opcode = get_opcode(first_byte);
 
@@ -333,22 +313,12 @@ pub fn disassemble(machine_code: Vec<u8>) -> (String, String) {
                 // 1 byte for the opcode + the number of bytes in the immediate
                 let index_increment = immediate_bytes + 1;
 
-                sim_state.set_register_value(register, immediate);
-
                 (instruction, index_increment)
             }
-            OpCode::MovMem => {
-                mem_mem_disassembly(OpCode::MovMem, &machine_code, index, &mut sim_state)
-            }
-            OpCode::AddMemMem => {
-                mem_mem_disassembly(OpCode::AddMemMem, &machine_code, index, &mut sim_state)
-            }
-            OpCode::SubMemMem => {
-                mem_mem_disassembly(OpCode::SubMemMem, &machine_code, index, &mut sim_state)
-            }
-            OpCode::CmpMemMem => {
-                mem_mem_disassembly(OpCode::CmpMemMem, &machine_code, index, &mut sim_state)
-            }
+            OpCode::MovMem => mem_mem_disassembly(OpCode::MovMem, machine_code, index),
+            OpCode::AddMemMem => mem_mem_disassembly(OpCode::AddMemMem, machine_code, index),
+            OpCode::SubMemMem => mem_mem_disassembly(OpCode::SubMemMem, machine_code, index),
+            OpCode::CmpMemMem => mem_mem_disassembly(OpCode::CmpMemMem, machine_code, index),
             OpCode::ImmediateArithmetic => {
                 let word_byte: WordByte = (first_byte & 0b00000001).into();
                 let word_byte_string = match word_byte {
@@ -367,7 +337,7 @@ pub fn disassemble(machine_code: Vec<u8>) -> (String, String) {
                         let rm_field = second_byte & 0b00000111;
 
                         let (address_calculation, displacement_bytes) =
-                            no_displacement_address_arithmetic(rm_field, &machine_code, index);
+                            no_displacement_address_arithmetic(rm_field, machine_code, index);
 
                         // 2 bytes + displacment bytes is the low data byte
                         let low_byte_index = 2 + displacement_bytes;
@@ -375,7 +345,7 @@ pub fn disassemble(machine_code: Vec<u8>) -> (String, String) {
                         let high_byte_index = 3 + displacement_bytes;
 
                         let (immediate, data_increment) = get_immediate(
-                            &machine_code,
+                            machine_code,
                             index,
                             low_byte_index,
                             high_byte_index,
@@ -446,31 +416,29 @@ pub fn disassemble(machine_code: Vec<u8>) -> (String, String) {
 
                 (instruction, index_increment)
             }
-            OpCode::ImmediateToAccumulator => accumulator_arithmetic("add", &machine_code, index),
-            OpCode::ImmediateFromAccumulator => accumulator_arithmetic("sub", &machine_code, index),
-            OpCode::CmpImmediateToAccumulator => {
-                accumulator_arithmetic("cmp", &machine_code, index)
-            }
-            OpCode::JneJnz => jump_opcode(&machine_code, index, "jnz"),
-            OpCode::Je => jump_opcode(&machine_code, index, "je"),
-            OpCode::Jl => jump_opcode(&machine_code, index, "jl"),
-            OpCode::Jle => jump_opcode(&machine_code, index, "jle"),
-            OpCode::Jb => jump_opcode(&machine_code, index, "jb"),
-            OpCode::Jbe => jump_opcode(&machine_code, index, "jbe"),
-            OpCode::Jp => jump_opcode(&machine_code, index, "jp"),
-            OpCode::Jo => jump_opcode(&machine_code, index, "jo"),
-            OpCode::Js => jump_opcode(&machine_code, index, "js"),
-            OpCode::Jnl => jump_opcode(&machine_code, index, "jnl"),
-            OpCode::Jg => jump_opcode(&machine_code, index, "jg"),
-            OpCode::Jnb => jump_opcode(&machine_code, index, "jnb"),
-            OpCode::Ja => jump_opcode(&machine_code, index, "ja"),
-            OpCode::Jnp => jump_opcode(&machine_code, index, "jnp"),
-            OpCode::Jno => jump_opcode(&machine_code, index, "jno"),
-            OpCode::Jns => jump_opcode(&machine_code, index, "jns"),
-            OpCode::Loop => jump_opcode(&machine_code, index, "loop"),
-            OpCode::Loopz => jump_opcode(&machine_code, index, "loopz"),
-            OpCode::Loopnz => jump_opcode(&machine_code, index, "loopnz"),
-            OpCode::Jcxz => jump_opcode(&machine_code, index, "jcxz"),
+            OpCode::ImmediateToAccumulator => accumulator_arithmetic("add", machine_code, index),
+            OpCode::ImmediateFromAccumulator => accumulator_arithmetic("sub", machine_code, index),
+            OpCode::CmpImmediateToAccumulator => accumulator_arithmetic("cmp", machine_code, index),
+            OpCode::JneJnz => jump_opcode(machine_code, index, "jnz"),
+            OpCode::Je => jump_opcode(machine_code, index, "je"),
+            OpCode::Jl => jump_opcode(machine_code, index, "jl"),
+            OpCode::Jle => jump_opcode(machine_code, index, "jle"),
+            OpCode::Jb => jump_opcode(machine_code, index, "jb"),
+            OpCode::Jbe => jump_opcode(machine_code, index, "jbe"),
+            OpCode::Jp => jump_opcode(machine_code, index, "jp"),
+            OpCode::Jo => jump_opcode(machine_code, index, "jo"),
+            OpCode::Js => jump_opcode(machine_code, index, "js"),
+            OpCode::Jnl => jump_opcode(machine_code, index, "jnl"),
+            OpCode::Jg => jump_opcode(machine_code, index, "jg"),
+            OpCode::Jnb => jump_opcode(machine_code, index, "jnb"),
+            OpCode::Ja => jump_opcode(machine_code, index, "ja"),
+            OpCode::Jnp => jump_opcode(machine_code, index, "jnp"),
+            OpCode::Jno => jump_opcode(machine_code, index, "jno"),
+            OpCode::Jns => jump_opcode(machine_code, index, "jns"),
+            OpCode::Loop => jump_opcode(machine_code, index, "loop"),
+            OpCode::Loopz => jump_opcode(machine_code, index, "loopz"),
+            OpCode::Loopnz => jump_opcode(machine_code, index, "loopnz"),
+            OpCode::Jcxz => jump_opcode(machine_code, index, "jcxz"),
         };
 
         result.push_str(&instruction);
@@ -478,13 +446,7 @@ pub fn disassemble(machine_code: Vec<u8>) -> (String, String) {
 
         // remove newline from instruction
         instruction.truncate(instruction.len() - 1);
-
-        let state_diff = get_sim_state_diff(&previous_state, &sim_state);
-        sim_log.push_str(&format!("{} ; {}", &instruction, state_diff));
     }
 
-    sim_log.push_str(&format!("Final registers:\n"));
-    sim_log.push_str(&format!("{}\n", sim_state.pretty_string()));
-
-    (result, sim_log)
+    result
 }

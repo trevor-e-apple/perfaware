@@ -1,10 +1,10 @@
 mod byte_operations;
 mod common_assembly;
 mod disassemble;
+mod simulate;
 mod simulator_state;
 
 use std::{
-    env,
     fs::{self, remove_file, File},
     io::Write,
     iter::zip,
@@ -15,6 +15,7 @@ use std::{
 use argparse;
 use argparse::ArgumentParser;
 use disassemble::disassemble;
+use simulate::simulate;
 
 fn run_nasm(path: &str, outpath: &str) {
     if cfg!(target_os = "windows") {
@@ -38,8 +39,8 @@ fn run_nasm(path: &str, outpath: &str) {
 fn main() {
     // get args
     let mut target = "".to_owned();
-    let mut print_disassemble = false;
-    let mut print_simulate = false;
+    let mut should_reassemble = false;
+    let mut should_simulate = false;
 
     {
         // this block limits scope of borrows by ap.refer() method
@@ -50,12 +51,12 @@ fn main() {
             argparse::Store,
             "The directory / file to target",
         );
-        ap.refer(&mut print_disassemble)
-            .add_option(&["--disassemble"], argparse::StoreTrue, "Whether or not to print out the results of a diff between nasm assembly and disassembly");
-        ap.refer(&mut print_simulate).add_option(
+        ap.refer(&mut should_reassemble)
+            .add_option(&["--reassemble"], argparse::StoreTrue, "Whether or not to reassemble and perform a diff between original assembly and diassembly-based assembly");
+        ap.refer(&mut should_simulate).add_option(
             &["--simulate"],
             argparse::StoreTrue,
-            "Whether or not to print out the results of the program simulation",
+            "Whether or not to run a program simulation",
         );
         ap.parse_args_or_exit();
     }
@@ -106,18 +107,19 @@ fn main() {
         // assemble with nasm
         run_nasm(&original_asm_path, &original_outpath);
 
+        // read assembler output
+        let contents = match fs::read(&original_outpath) {
+            Ok(contents) => contents,
+            Err(error) => {
+                eprintln!("Failed to read {}", &original_outpath);
+                eprintln!("{}", error);
+                return;
+            }
+        };
+
         // disassemble with our disassembler
-        let (gen_asm_path, gen_outpath, simulation_log) = {
-            // read assembler output
-            let contents = match fs::read(&original_outpath) {
-                Ok(contents) => contents,
-                Err(error) => {
-                    eprintln!("Failed to read {}", &original_outpath);
-                    eprintln!("{}", error);
-                    return;
-                }
-            };
-            let (disassembly, simulation_log) = disassemble(contents);
+        let (gen_asm_path, gen_outpath) = {
+            let disassembly = disassemble(&contents);
 
             let gen_asm_name = format!("{}_test_gen.asm", file_name_no_extension);
             let gen_asm_path = Path::join(dir_path, gen_asm_name);
@@ -137,41 +139,41 @@ fn main() {
             (
                 gen_asm_path.into_os_string().into_string().unwrap(),
                 gen_outpath,
-                simulation_log,
             )
         };
 
-        // assemble with nasm
-        run_nasm(&gen_asm_path, &gen_outpath);
-
         // perform a diff check
-        let test_passed: bool = {
-            let original_data = fs::read(&original_outpath).expect("Unexpected read error");
-            let gen_data = fs::read(&gen_outpath).expect("Unexpected read error");
+        if should_reassemble {
+            // assemble with nasm
+            run_nasm(&gen_asm_path, &gen_outpath);
 
-            let mut test_passed = true;
-            for (original_byte, gen_byte) in zip(&original_data, &gen_data) {
-                if *original_byte != *gen_byte {
-                    println!("{} dissassembly failed", original_asm_path);
-                    test_passed = false;
-                    break;
+            let test_passed: bool = {
+                let original_data = fs::read(&original_outpath).expect("Unexpected read error");
+                let gen_data = fs::read(&gen_outpath).expect("Unexpected read error");
+
+                let mut test_passed = true;
+                for (original_byte, gen_byte) in zip(&original_data, &gen_data) {
+                    if *original_byte != *gen_byte {
+                        println!("{} dissassembly failed", original_asm_path);
+                        test_passed = false;
+                        break;
+                    }
                 }
-            }
 
-            test_passed
-        };
+                test_passed
+            };
 
-        // delete the generated files
-        if test_passed {
-            remove_file(&gen_asm_path).expect("Unable to remove gen asm");
-            remove_file(&gen_outpath).expect("Unable to remove gen binary");
+            // delete the generated files
+            if test_passed {
+                remove_file(&gen_asm_path).expect("Unable to remove gen asm");
+                remove_file(&gen_outpath).expect("Unable to remove gen binary");
 
-            if print_disassemble {
                 println!("Test passed");
             }
         }
 
-        if print_simulate {
+        if should_simulate {
+            let (_, simulation_log) = simulate(&contents);
             println!("Simulation results:");
             print!("{}", simulation_log);
         }
