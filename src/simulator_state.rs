@@ -97,6 +97,21 @@ impl SimulationState {
         };
     }
 
+    /// sets arithmetic flags based on the value in value
+    pub fn set_flags(&mut self, value: u16) {
+        if (value & 0x80) > 0 {
+            self.sign_flag = true;
+        } else {
+            self.sign_flag = false;
+        }
+
+        if value == 0 {
+            self.zero_flag = true;
+        } else {
+            self.zero_flag = false;
+        }
+    }
+
     pub fn pretty_string(&self) -> String {
         let mut result = format!(
             concat!(

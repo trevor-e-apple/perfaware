@@ -361,7 +361,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
                 let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
                 let arithmetic_code: ArithmeticOpCode = ((second_byte & 0b00111000) >> 3).into();
 
-                let (dest_arg, immediate, index_increment) = match mode {
+                let index_increment = match mode {
                     Mode::MemNoDisplacement => {
                         let rm_field = second_byte & 0b00000111;
 
@@ -382,11 +382,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
                             sign_extension,
                         );
 
-                        (
-                            format!("{} {}", word_byte_string, address_calculation),
-                            immediate,
-                            2 + displacement_bytes + data_increment,
-                        )
+                        2 + displacement_bytes + data_increment
                     }
                     Mode::Mem8BitDisplacement => {
                         let rm_field = second_byte & 0b0000111;
@@ -396,11 +392,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
                         let (immediate, data_increment) =
                             get_immediate(&machine_code, index, 3, 4, word_byte, sign_extension);
 
-                        (
-                            format!("{} {}", word_byte_string, address_calculation),
-                            immediate,
-                            3 + data_increment,
-                        )
+                        3 + data_increment
                     }
                     Mode::Mem16BitDisplacement => {
                         let rm_field = second_byte & 0b0000111;
@@ -411,39 +403,34 @@ pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
                         let (immediate, data_increment) =
                             get_immediate(&machine_code, index, 4, 5, word_byte, sign_extension);
 
-                        (
-                            format!("{} {}", word_byte_string, address_calculation),
-                            immediate,
-                            4 + data_increment,
-                        )
+                        4 + data_increment
                     }
                     Mode::Register => {
                         let register = get_rm_register_field(second_byte, word_byte);
-                        let name = register_to_assembly_name(register);
-                        let third_byte = machine_code[index + 2];
-                        (format!("{}", name), third_byte as u16, 3)
+                        let immediate = machine_code[index + 2] as u16;
+
+                        match arithmetic_code {
+                            ArithmeticOpCode::Add => {
+                                let value = sim_state.get_register_value(register) + immediate;
+                                sim_state.set_register_value(register, value);
+                                sim_state.set_flags(value);
+                            }
+                            ArithmeticOpCode::Sub => {
+                                let value = sim_state.get_register_value(register) - immediate;
+                                sim_state.set_register_value(register, value);
+                                sim_state.set_flags(value);
+                            }
+                            ArithmeticOpCode::Cmp => {
+                                let value = sim_state.get_register_value(register) - immediate;
+                                sim_state.set_flags(value);
+                            }
+                        }
+
+                        3
                     }
                 };
 
-                let instruction = match arithmetic_code {
-                    ArithmeticOpCode::Add => {
-                        let instruction = format!("add {}, {}\n", dest_arg, immediate);
-
-                        instruction
-                    }
-                    ArithmeticOpCode::Sub => {
-                        let instruction = format!("sub {}, {}\n", dest_arg, immediate);
-
-                        instruction
-                    }
-                    ArithmeticOpCode::Cmp => {
-                        let instruction = format!("cmp {}, {}\n", dest_arg, immediate);
-
-                        instruction
-                    }
-                };
-
-                (instruction, index_increment)
+                ("".to_owned(), index_increment)
             }
             OpCode::ImmediateToAccumulator => accumulator_arithmetic("add", &machine_code, index),
             OpCode::ImmediateFromAccumulator => accumulator_arithmetic("sub", &machine_code, index),
