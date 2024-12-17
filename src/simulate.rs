@@ -120,6 +120,7 @@ pub fn mem_mem_disassembly(
     index: usize,
     sim_state: &mut SimulationState,
 ) -> (String, usize) {
+    // TODO: remove assembly_mnemonic
     let assembly_mnemonic = match opcode {
         OpCode::MovMem => "mov".to_owned(),
         OpCode::AddMemMem => "add".to_owned(),

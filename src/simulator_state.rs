@@ -15,6 +15,9 @@ pub struct SimulationState {
     pub bp: u16,
     pub si: u16,
     pub di: u16,
+
+    pub sign_flag: bool,
+    pub zero_flag: bool,
 }
 
 impl SimulationState {
@@ -95,8 +98,17 @@ impl SimulationState {
     }
 
     pub fn pretty_string(&self) -> String {
-        format!(
-            "ax: {:#06X}({})\nbx: {:#06X}({})\ncx: {:#06X}({})\ndx: {:#06X}({})\nsp: {:#06X}({})\nbp: {:#06X}({})\nsi: {:#06X}({})\ndi: {:#06X}({})\n",
+        let mut result = format!(
+            concat!(
+                "ax: {:#06X}({})\n",
+                "bx: {:#06X}({})\n",
+                "cx: {:#06X}({})\n",
+                "dx: {:#06X}({})\n",
+                "sp: {:#06X}({})\n",
+                "bp: {:#06X}({})\n",
+                "si: {:#06X}({})\n",
+                "di: {:#06X}({})\n",
+            ),
             self.ax,
             self.ax,
             self.bx,
@@ -113,7 +125,17 @@ impl SimulationState {
             self.si,
             self.di,
             self.di
-        )
+        );
+
+        result.push_str("Flags: ");
+        if self.sign_flag {
+            result.push_str("S");
+        }
+        if self.zero_flag {
+            result.push_str("Z");
+        }
+
+        result
     }
 }
 
