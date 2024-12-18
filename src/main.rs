@@ -173,7 +173,7 @@ fn main() {
         }
 
         if should_simulate {
-            let (_, simulation_log) = simulate(&contents);
+            let simulation_log = simulate(&contents);
             println!("Simulation results:");
             print!("{}", simulation_log);
         }

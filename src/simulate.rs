@@ -196,14 +196,14 @@ pub fn mem_mem_disassembly(
                 OpCode::SubMemMem => {
                     let operand_value = sim_state.get_register_value(src_register);
                     let dest_value = sim_state.get_register_value(dest_register);
-                    let value = operand_value - dest_value;
+                    let value = dest_value - operand_value;
                     sim_state.set_register_value(dest_register, value);
                     sim_state.set_flags(value);
                 }
                 OpCode::CmpMemMem => {
                     let operand_value = sim_state.get_register_value(src_register);
                     let dest_value = sim_state.get_register_value(dest_register);
-                    let value = operand_value - dest_value;
+                    let value = dest_value - operand_value;
                     sim_state.set_flags(value);
                 }
                 _ => panic!("Unexpected opcode for mem to mem instruction"),
@@ -293,8 +293,7 @@ fn jump_opcode(machine_code: &Vec<u8>, index: usize, operation: &str) -> (String
     (instruction, 2)
 }
 
-pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
-    let mut result = "bits 16\n".to_owned();
+pub fn simulate(machine_code: &Vec<u8>) -> String {
     let mut sim_log = "".to_owned();
     let mut sim_state = SimulationState {
         ..Default::default()
@@ -308,7 +307,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
         let first_byte = machine_code[index];
         let opcode = get_opcode(first_byte);
 
-        let (mut instruction, index_increment) = match opcode {
+        let (_, index_increment) = match opcode {
             OpCode::RegisterImmediateMov => {
                 let word_byte: WordByte = ((first_byte & 0b00001000) >> 3).into();
                 let register_field = first_byte & 0b00000111;
@@ -324,18 +323,12 @@ pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
                     }
                 };
 
-                let instruction = format!(
-                    "mov {}, {}\n",
-                    register_to_assembly_name(register),
-                    immediate
-                );
-
                 // 1 byte for the opcode + the number of bytes in the immediate
                 let index_increment = immediate_bytes + 1;
 
                 sim_state.set_register_value(register, immediate);
 
-                (instruction, index_increment)
+                ("".to_owned(), index_increment)
             }
             OpCode::MovMem => {
                 mem_mem_disassembly(OpCode::MovMem, &machine_code, index, &mut sim_state)
@@ -351,10 +344,6 @@ pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
             }
             OpCode::ImmediateArithmetic => {
                 let word_byte: WordByte = (first_byte & 0b00000001).into();
-                let word_byte_string = match word_byte {
-                    WordByte::Byte => "byte".to_owned(),
-                    WordByte::Word => "word".to_owned(),
-                };
 
                 let sign_extension = (first_byte & 0b00000010) >> 1;
 
@@ -408,7 +397,16 @@ pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
                     }
                     Mode::Register => {
                         let register = get_rm_register_field(second_byte, word_byte);
-                        let immediate = machine_code[index + 2] as u16;
+                        let low_byte_index = 2;
+                        let high_byte_index = 3;
+                        let (immediate, data_increment) = get_immediate(
+                            &machine_code,
+                            index,
+                            low_byte_index,
+                            high_byte_index,
+                            word_byte,
+                            sign_extension,
+                        );
 
                         match arithmetic_code {
                             ArithmeticOpCode::Add => {
@@ -427,7 +425,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
                             }
                         }
 
-                        3
+                        2 + data_increment
                     }
                 };
 
@@ -473,5 +471,5 @@ pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
     sim_log.push_str(&format!("Final registers:\n"));
     sim_log.push_str(&format!("{}\n", sim_state.pretty_string()));
 
-    (result, sim_log)
+    sim_log
 }
