@@ -3,6 +3,7 @@ use crate::common_assembly::{
     get_opcode, get_register_enum, get_rm_register_field, register_to_assembly_name,
     ArithmeticOpCode, Direction, Mode, OpCode, WordByte,
 };
+use crate::disassemble::get_instruction;
 use crate::simulator_state::{get_sim_state_diff, SimulationState};
 
 /// Returns a string and the number of bytes in the displacement for a no-displacement mov
@@ -120,15 +121,6 @@ pub fn mem_mem_disassembly(
     index: usize,
     sim_state: &mut SimulationState,
 ) -> (String, usize) {
-    // TODO: remove assembly_mnemonic
-    let assembly_mnemonic = match opcode {
-        OpCode::MovMem => "mov".to_owned(),
-        OpCode::AddMemMem => "add".to_owned(),
-        OpCode::SubMemMem => "sub".to_owned(),
-        OpCode::CmpMemMem => "cmp".to_owned(),
-        _ => panic!("Unexpected opcode for mem to mem instruction"),
-    };
-
     let first_byte = machine_code[index];
 
     let direction: Direction = ((first_byte & 0b00000010) >> 1).into();
@@ -139,7 +131,7 @@ pub fn mem_mem_disassembly(
     let register_field = (second_byte & 0b00111000) >> 3;
     let register = get_register_enum(register_field, word_byte);
 
-    let (instruction, index_increment) = match mode {
+    let index_increment = match mode {
         Mode::MemNoDisplacement => {
             let rm_field = second_byte & 0b00000111;
 
@@ -151,10 +143,8 @@ pub fn mem_mem_disassembly(
                 Direction::RmReg => (register_to_assembly_name(register), address_calculation),
             };
 
-            (
-                format!("{} {}, {}\n", assembly_mnemonic, dest, source),
-                2 + displacement_byte_count,
-            )
+            // format!("{} {}, {}\n", assembly_mnemonic, dest, source),
+            2 + displacement_byte_count
         }
         Mode::Mem8BitDisplacement => {
             let rm_field = second_byte & 0b0000111;
@@ -166,7 +156,8 @@ pub fn mem_mem_disassembly(
                 Direction::RmReg => (register_to_assembly_name(register), address_calculation),
             };
 
-            (format!("{} {}, {}\n", assembly_mnemonic, dest, source), 3)
+            // format!("{} {}, {}\n", assembly_mnemonic, dest, source),
+            3
         }
         Mode::Mem16BitDisplacement => {
             let rm_field = second_byte & 0b0000111;
@@ -178,7 +169,8 @@ pub fn mem_mem_disassembly(
                 Direction::RmReg => (register_to_assembly_name(register), address_calculation),
             };
 
-            (format!("{} {}, {}\n", assembly_mnemonic, dest, source), 4)
+            // format!("{} {}, {}\n", assembly_mnemonic, dest, source),
+            4
         }
         Mode::Register => {
             let second_register = get_rm_register_field(second_byte, word_byte);
@@ -194,25 +186,34 @@ pub fn mem_mem_disassembly(
                     let value = sim_state.get_register_value(src_register);
                     sim_state.set_register_value(dest_register, value);
                 }
-                OpCode::AddMemMem => {}
-                OpCode::SubMemMem => {}
-                OpCode::CmpMemMem => {}
+                OpCode::AddMemMem => {
+                    let operand_value = sim_state.get_register_value(src_register);
+                    let dest_value = sim_state.get_register_value(dest_register);
+                    let value = operand_value + dest_value;
+                    sim_state.set_register_value(dest_register, value);
+                    sim_state.set_flags(value);
+                }
+                OpCode::SubMemMem => {
+                    let operand_value = sim_state.get_register_value(src_register);
+                    let dest_value = sim_state.get_register_value(dest_register);
+                    let value = operand_value - dest_value;
+                    sim_state.set_register_value(dest_register, value);
+                    sim_state.set_flags(value);
+                }
+                OpCode::CmpMemMem => {
+                    let operand_value = sim_state.get_register_value(src_register);
+                    let dest_value = sim_state.get_register_value(dest_register);
+                    let value = operand_value - dest_value;
+                    sim_state.set_flags(value);
+                }
                 _ => panic!("Unexpected opcode for mem to mem instruction"),
             };
 
-            (
-                format!(
-                    "{} {}, {}\n",
-                    assembly_mnemonic,
-                    register_to_assembly_name(dest_register),
-                    register_to_assembly_name(src_register)
-                ),
-                2,
-            )
+            2
         }
     };
 
-    (instruction, index_increment)
+    ("".to_owned(), index_increment)
 }
 
 /// common function for accumulator arithmetic
@@ -459,11 +460,11 @@ pub fn simulate(machine_code: &Vec<u8>) -> (String, String) {
             OpCode::Jcxz => jump_opcode(&machine_code, index, "jcxz"),
         };
 
-        result.push_str(&instruction);
-        index += index_increment;
-
         // remove newline from instruction
+        let (mut instruction, _) = get_instruction(machine_code, index);
         instruction.truncate(instruction.len() - 1);
+
+        index += index_increment;
 
         let state_diff = get_sim_state_diff(&previous_state, &sim_state);
         sim_log.push_str(&format!("{} ; {}", &instruction, state_diff));

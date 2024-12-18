@@ -277,6 +277,164 @@ fn jump_opcode(machine_code: &Vec<u8>, index: usize, operation: &str) -> (String
     (instruction, 2)
 }
 
+pub fn get_instruction(machine_code: &Vec<u8>, index: usize) -> (String, usize) {
+    let first_byte = machine_code[index];
+    let opcode = get_opcode(first_byte);
+
+    match opcode {
+        OpCode::RegisterImmediateMov => {
+            let word_byte: WordByte = ((first_byte & 0b00001000) >> 3).into();
+            let register_field = first_byte & 0b00000111;
+            let register = get_register_enum(register_field, word_byte);
+            let second_byte = machine_code[index + 1];
+
+            let (immediate, immediate_bytes) = match word_byte {
+                WordByte::Byte => (second_byte as u16, 1),
+                WordByte::Word => {
+                    let third_byte = machine_code[index + 2];
+                    let immediate = concat_bytes(third_byte, second_byte);
+                    (immediate, 2)
+                }
+            };
+
+            let instruction = format!(
+                "mov {}, {}\n",
+                register_to_assembly_name(register),
+                immediate
+            );
+
+            // 1 byte for the opcode + the number of bytes in the immediate
+            let index_increment = immediate_bytes + 1;
+
+            (instruction, index_increment)
+        }
+        OpCode::MovMem => mem_mem_disassembly(OpCode::MovMem, machine_code, index),
+        OpCode::AddMemMem => mem_mem_disassembly(OpCode::AddMemMem, machine_code, index),
+        OpCode::SubMemMem => mem_mem_disassembly(OpCode::SubMemMem, machine_code, index),
+        OpCode::CmpMemMem => mem_mem_disassembly(OpCode::CmpMemMem, machine_code, index),
+        OpCode::ImmediateArithmetic => {
+            let word_byte: WordByte = (first_byte & 0b00000001).into();
+            let word_byte_string = match word_byte {
+                WordByte::Byte => "byte".to_owned(),
+                WordByte::Word => "word".to_owned(),
+            };
+
+            let sign_extension = (first_byte & 0b00000010) >> 1;
+
+            let second_byte = machine_code[index + 1];
+            let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
+            let arithmetic_code: ArithmeticOpCode = ((second_byte & 0b00111000) >> 3).into();
+
+            let (dest_arg, immediate, index_increment) = match mode {
+                Mode::MemNoDisplacement => {
+                    let rm_field = second_byte & 0b00000111;
+
+                    let (address_calculation, displacement_bytes) =
+                        no_displacement_address_arithmetic(rm_field, machine_code, index);
+
+                    // 2 bytes + displacment bytes is the low data byte
+                    let low_byte_index = 2 + displacement_bytes;
+                    // 2 bytes + displacment bytes + 1 low byte + 1 is the high data byte
+                    let high_byte_index = 3 + displacement_bytes;
+
+                    let (immediate, data_increment) = get_immediate(
+                        machine_code,
+                        index,
+                        low_byte_index,
+                        high_byte_index,
+                        word_byte,
+                        sign_extension,
+                    );
+
+                    (
+                        format!("{} {}", word_byte_string, address_calculation),
+                        immediate,
+                        2 + displacement_bytes + data_increment,
+                    )
+                }
+                Mode::Mem8BitDisplacement => {
+                    let rm_field = second_byte & 0b0000111;
+                    let displacement = machine_code[index + 2];
+                    let address_calculation = rm_field_to_displacement(rm_field, displacement);
+
+                    let (immediate, data_increment) =
+                        get_immediate(&machine_code, index, 3, 4, word_byte, sign_extension);
+
+                    (
+                        format!("{} {}", word_byte_string, address_calculation),
+                        immediate,
+                        3 + data_increment,
+                    )
+                }
+                Mode::Mem16BitDisplacement => {
+                    let rm_field = second_byte & 0b0000111;
+                    let displacement =
+                        concat_bytes(machine_code[index + 3], machine_code[index + 2]);
+                    let address_calculation = rm_field_to_displacement(rm_field, displacement);
+
+                    let (immediate, data_increment) =
+                        get_immediate(&machine_code, index, 4, 5, word_byte, sign_extension);
+
+                    (
+                        format!("{} {}", word_byte_string, address_calculation),
+                        immediate,
+                        4 + data_increment,
+                    )
+                }
+                Mode::Register => {
+                    let register = get_rm_register_field(second_byte, word_byte);
+                    let name = register_to_assembly_name(register);
+                    let third_byte = machine_code[index + 2];
+                    (format!("{}", name), third_byte as u16, 3)
+                }
+            };
+
+            let instruction = match arithmetic_code {
+                ArithmeticOpCode::Add => {
+                    let instruction = format!("add {}, {}\n", dest_arg, immediate);
+
+                    instruction
+                }
+                ArithmeticOpCode::Sub => {
+                    let instruction = format!("sub {}, {}\n", dest_arg, immediate);
+
+                    instruction
+                }
+                ArithmeticOpCode::Cmp => {
+                    let instruction = format!("cmp {}, {}\n", dest_arg, immediate);
+
+                    instruction
+                }
+            };
+
+            (instruction, index_increment)
+        }
+        OpCode::ImmediateToAccumulator => accumulator_arithmetic("add", machine_code, index),
+        OpCode::ImmediateFromAccumulator => accumulator_arithmetic("sub", machine_code, index),
+        OpCode::CmpImmediateToAccumulator => accumulator_arithmetic("cmp", machine_code, index),
+        OpCode::JneJnz => jump_opcode(machine_code, index, "jnz"),
+        OpCode::Je => jump_opcode(machine_code, index, "je"),
+        OpCode::Jl => jump_opcode(machine_code, index, "jl"),
+        OpCode::Jle => jump_opcode(machine_code, index, "jle"),
+        OpCode::Jb => jump_opcode(machine_code, index, "jb"),
+        OpCode::Jbe => jump_opcode(machine_code, index, "jbe"),
+        OpCode::Jp => jump_opcode(machine_code, index, "jp"),
+        OpCode::Jo => jump_opcode(machine_code, index, "jo"),
+        OpCode::Js => jump_opcode(machine_code, index, "js"),
+        OpCode::Jnl => jump_opcode(machine_code, index, "jnl"),
+        OpCode::Jg => jump_opcode(machine_code, index, "jg"),
+        OpCode::Jnb => jump_opcode(machine_code, index, "jnb"),
+        OpCode::Ja => jump_opcode(machine_code, index, "ja"),
+        OpCode::Jnp => jump_opcode(machine_code, index, "jnp"),
+        OpCode::Jno => jump_opcode(machine_code, index, "jno"),
+        OpCode::Jns => jump_opcode(machine_code, index, "jns"),
+        OpCode::Loop => jump_opcode(machine_code, index, "loop"),
+        OpCode::Loopz => jump_opcode(machine_code, index, "loopz"),
+        OpCode::Loopnz => jump_opcode(machine_code, index, "loopnz"),
+        OpCode::Jcxz => jump_opcode(machine_code, index, "jcxz"),
+    }
+}
+
 /// perform disassembly. returns a disassembly string. Also performs a simulation of executing all of
 /// the instructions
 pub fn disassemble(machine_code: &Vec<u8>) -> String {
@@ -285,161 +443,7 @@ pub fn disassemble(machine_code: &Vec<u8>) -> String {
     let mut index = 0;
 
     while index < machine_code.len() {
-        let first_byte = machine_code[index];
-        let opcode = get_opcode(first_byte);
-
-        let (mut instruction, index_increment) = match opcode {
-            OpCode::RegisterImmediateMov => {
-                let word_byte: WordByte = ((first_byte & 0b00001000) >> 3).into();
-                let register_field = first_byte & 0b00000111;
-                let register = get_register_enum(register_field, word_byte);
-                let second_byte = machine_code[index + 1];
-
-                let (immediate, immediate_bytes) = match word_byte {
-                    WordByte::Byte => (second_byte as u16, 1),
-                    WordByte::Word => {
-                        let third_byte = machine_code[index + 2];
-                        let immediate = concat_bytes(third_byte, second_byte);
-                        (immediate, 2)
-                    }
-                };
-
-                let instruction = format!(
-                    "mov {}, {}\n",
-                    register_to_assembly_name(register),
-                    immediate
-                );
-
-                // 1 byte for the opcode + the number of bytes in the immediate
-                let index_increment = immediate_bytes + 1;
-
-                (instruction, index_increment)
-            }
-            OpCode::MovMem => mem_mem_disassembly(OpCode::MovMem, machine_code, index),
-            OpCode::AddMemMem => mem_mem_disassembly(OpCode::AddMemMem, machine_code, index),
-            OpCode::SubMemMem => mem_mem_disassembly(OpCode::SubMemMem, machine_code, index),
-            OpCode::CmpMemMem => mem_mem_disassembly(OpCode::CmpMemMem, machine_code, index),
-            OpCode::ImmediateArithmetic => {
-                let word_byte: WordByte = (first_byte & 0b00000001).into();
-                let word_byte_string = match word_byte {
-                    WordByte::Byte => "byte".to_owned(),
-                    WordByte::Word => "word".to_owned(),
-                };
-
-                let sign_extension = (first_byte & 0b00000010) >> 1;
-
-                let second_byte = machine_code[index + 1];
-                let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
-                let arithmetic_code: ArithmeticOpCode = ((second_byte & 0b00111000) >> 3).into();
-
-                let (dest_arg, immediate, index_increment) = match mode {
-                    Mode::MemNoDisplacement => {
-                        let rm_field = second_byte & 0b00000111;
-
-                        let (address_calculation, displacement_bytes) =
-                            no_displacement_address_arithmetic(rm_field, machine_code, index);
-
-                        // 2 bytes + displacment bytes is the low data byte
-                        let low_byte_index = 2 + displacement_bytes;
-                        // 2 bytes + displacment bytes + 1 low byte + 1 is the high data byte
-                        let high_byte_index = 3 + displacement_bytes;
-
-                        let (immediate, data_increment) = get_immediate(
-                            machine_code,
-                            index,
-                            low_byte_index,
-                            high_byte_index,
-                            word_byte,
-                            sign_extension,
-                        );
-
-                        (
-                            format!("{} {}", word_byte_string, address_calculation),
-                            immediate,
-                            2 + displacement_bytes + data_increment,
-                        )
-                    }
-                    Mode::Mem8BitDisplacement => {
-                        let rm_field = second_byte & 0b0000111;
-                        let displacement = machine_code[index + 2];
-                        let address_calculation = rm_field_to_displacement(rm_field, displacement);
-
-                        let (immediate, data_increment) =
-                            get_immediate(&machine_code, index, 3, 4, word_byte, sign_extension);
-
-                        (
-                            format!("{} {}", word_byte_string, address_calculation),
-                            immediate,
-                            3 + data_increment,
-                        )
-                    }
-                    Mode::Mem16BitDisplacement => {
-                        let rm_field = second_byte & 0b0000111;
-                        let displacement =
-                            concat_bytes(machine_code[index + 3], machine_code[index + 2]);
-                        let address_calculation = rm_field_to_displacement(rm_field, displacement);
-
-                        let (immediate, data_increment) =
-                            get_immediate(&machine_code, index, 4, 5, word_byte, sign_extension);
-
-                        (
-                            format!("{} {}", word_byte_string, address_calculation),
-                            immediate,
-                            4 + data_increment,
-                        )
-                    }
-                    Mode::Register => {
-                        let register = get_rm_register_field(second_byte, word_byte);
-                        let name = register_to_assembly_name(register);
-                        let third_byte = machine_code[index + 2];
-                        (format!("{}", name), third_byte as u16, 3)
-                    }
-                };
-
-                let instruction = match arithmetic_code {
-                    ArithmeticOpCode::Add => {
-                        let instruction = format!("add {}, {}\n", dest_arg, immediate);
-
-                        instruction
-                    }
-                    ArithmeticOpCode::Sub => {
-                        let instruction = format!("sub {}, {}\n", dest_arg, immediate);
-
-                        instruction
-                    }
-                    ArithmeticOpCode::Cmp => {
-                        let instruction = format!("cmp {}, {}\n", dest_arg, immediate);
-
-                        instruction
-                    }
-                };
-
-                (instruction, index_increment)
-            }
-            OpCode::ImmediateToAccumulator => accumulator_arithmetic("add", machine_code, index),
-            OpCode::ImmediateFromAccumulator => accumulator_arithmetic("sub", machine_code, index),
-            OpCode::CmpImmediateToAccumulator => accumulator_arithmetic("cmp", machine_code, index),
-            OpCode::JneJnz => jump_opcode(machine_code, index, "jnz"),
-            OpCode::Je => jump_opcode(machine_code, index, "je"),
-            OpCode::Jl => jump_opcode(machine_code, index, "jl"),
-            OpCode::Jle => jump_opcode(machine_code, index, "jle"),
-            OpCode::Jb => jump_opcode(machine_code, index, "jb"),
-            OpCode::Jbe => jump_opcode(machine_code, index, "jbe"),
-            OpCode::Jp => jump_opcode(machine_code, index, "jp"),
-            OpCode::Jo => jump_opcode(machine_code, index, "jo"),
-            OpCode::Js => jump_opcode(machine_code, index, "js"),
-            OpCode::Jnl => jump_opcode(machine_code, index, "jnl"),
-            OpCode::Jg => jump_opcode(machine_code, index, "jg"),
-            OpCode::Jnb => jump_opcode(machine_code, index, "jnb"),
-            OpCode::Ja => jump_opcode(machine_code, index, "ja"),
-            OpCode::Jnp => jump_opcode(machine_code, index, "jnp"),
-            OpCode::Jno => jump_opcode(machine_code, index, "jno"),
-            OpCode::Jns => jump_opcode(machine_code, index, "jns"),
-            OpCode::Loop => jump_opcode(machine_code, index, "loop"),
-            OpCode::Loopz => jump_opcode(machine_code, index, "loopz"),
-            OpCode::Loopnz => jump_opcode(machine_code, index, "loopnz"),
-            OpCode::Jcxz => jump_opcode(machine_code, index, "jcxz"),
-        };
+        let (mut instruction, index_increment) = get_instruction(machine_code, index);
 
         result.push_str(&instruction);
         index += index_increment;

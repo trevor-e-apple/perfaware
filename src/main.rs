@@ -117,33 +117,33 @@ fn main() {
             }
         };
 
-        // disassemble with our disassembler
-        let (gen_asm_path, gen_outpath) = {
-            let disassembly = disassemble(&contents);
-
-            let gen_asm_name = format!("{}_test_gen.asm", file_name_no_extension);
-            let gen_asm_path = Path::join(dir_path, gen_asm_name);
-
-            // write to file
-            let mut file = File::create(&gen_asm_path).unwrap();
-            file.write(&disassembly.as_bytes())
-                .expect("Failed to write disassembly to file");
-
-            // gen outpath
-            let out_file_name = format!("{}_test_gen.bin", &file_name_no_extension);
-            let gen_outpath = Path::join(dir_path, Path::new(&out_file_name))
-                .into_os_string()
-                .into_string()
-                .unwrap();
-
-            (
-                gen_asm_path.into_os_string().into_string().unwrap(),
-                gen_outpath,
-            )
-        };
-
         // perform a diff check
         if should_reassemble {
+            // disassemble with our disassembler
+            let (gen_asm_path, gen_outpath) = {
+                let disassembly = disassemble(&contents);
+
+                let gen_asm_name = format!("{}_test_gen.asm", file_name_no_extension);
+                let gen_asm_path = Path::join(dir_path, gen_asm_name);
+
+                // write to file
+                let mut file = File::create(&gen_asm_path).unwrap();
+                file.write(&disassembly.as_bytes())
+                    .expect("Failed to write disassembly to file");
+
+                // gen outpath
+                let out_file_name = format!("{}_test_gen.bin", &file_name_no_extension);
+                let gen_outpath = Path::join(dir_path, Path::new(&out_file_name))
+                    .into_os_string()
+                    .into_string()
+                    .unwrap();
+
+                (
+                    gen_asm_path.into_os_string().into_string().unwrap(),
+                    gen_outpath,
+                )
+            };
+
             // assemble with nasm
             run_nasm(&gen_asm_path, &gen_outpath);
 
