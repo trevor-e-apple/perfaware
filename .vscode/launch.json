@@ -48,6 +48,27 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Reassemble listing 47",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=perfaware",
+                    "--package=perfaware",
+                ],
+                "filter": {
+                    "name": "perfaware",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "./test_asm/listing46.asm",
+                "--reassemble"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug unit tests in executable 'perfaware'",
             "cargo": {
                 "args": [
