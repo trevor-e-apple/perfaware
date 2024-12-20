@@ -443,13 +443,10 @@ pub fn disassemble(machine_code: &Vec<u8>) -> String {
     let mut index = 0;
 
     while index < machine_code.len() {
-        let (mut instruction, index_increment) = get_instruction(machine_code, index);
+        let (instruction, index_increment) = get_instruction(machine_code, index);
 
         result.push_str(&instruction);
         index += index_increment;
-
-        // remove newline from instruction
-        instruction.truncate(instruction.len() - 1);
     }
 
     result
