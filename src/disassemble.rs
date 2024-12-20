@@ -384,8 +384,18 @@ pub fn get_instruction(machine_code: &Vec<u8>, index: usize) -> (String, usize) 
                 Mode::Register => {
                     let register = get_rm_register_field(second_byte, word_byte);
                     let name = register_to_assembly_name(register);
-                    let third_byte = machine_code[index + 2];
-                    (format!("{}", name), third_byte as u16, 3)
+                    let low_byte_index = 2;
+                    let high_byte_index = 3;
+                    let (immediate, data_increment) = get_immediate(
+                        &machine_code,
+                        index,
+                        low_byte_index,
+                        high_byte_index,
+                        word_byte,
+                        sign_extension,
+                    );
+
+                    (format!("{}", name), immediate, 2 + data_increment)
                 }
             };
 
