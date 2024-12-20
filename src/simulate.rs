@@ -120,7 +120,7 @@ pub fn mem_mem_disassembly(
     machine_code: &Vec<u8>,
     index: usize,
     sim_state: &mut SimulationState,
-) -> (String, usize) {
+) -> usize {
     let first_byte = machine_code[index];
 
     let direction: Direction = ((first_byte & 0b00000010) >> 1).into();
@@ -213,18 +213,14 @@ pub fn mem_mem_disassembly(
         }
     };
 
-    ("".to_owned(), index_increment)
+    index_increment
 }
 
 /// common function for accumulator arithmetic
 /// operation: the string for the operation. e.g. 'add', 'sub', 'cmp'
 /// machine_code: the vector containing the machine code
 /// index: the index for the first byte (containing the opcode)
-fn accumulator_arithmetic(
-    operation: &str,
-    machine_code: &Vec<u8>,
-    index: usize,
-) -> (String, usize) {
+fn accumulator_arithmetic(operation: OpCode, machine_code: &Vec<u8>, index: usize) -> usize {
     let first_byte = machine_code[index];
 
     let word_byte: WordByte = (first_byte & 0b00000001).into();
@@ -239,9 +235,7 @@ fn accumulator_arithmetic(
         }
     };
 
-    let instruction = format!("{} {}, {}\n", operation, register, data);
-
-    (instruction, index_increment)
+    index_increment
 }
 
 /// Get the immediate from the instruction and return both it and the number of bytes in the immediate value
@@ -283,14 +277,13 @@ fn get_immediate(
 /// machine_code: the vector containing all of our machine code
 /// index: the index of the first byte of the instruction
 /// operation: the jump operation string
-fn jump_opcode(machine_code: &Vec<u8>, index: usize, operation: &str) -> (String, usize) {
+fn jump_opcode(machine_code: &Vec<u8>, index: usize, operation: OpCode) -> usize {
     // NOTE: if you were interested, you could pass in the opcode enum, convert it into a usize, and lookup
     // -- into a table that includes all of the operation strings. You could then use pattern matching
     // -- and inline this function into the different jump opcodes
     let signed_displacement = machine_code[index + 1] as i8;
-    let instruction = format!("{} $ + 2 + {}\n", operation, signed_displacement);
 
-    (instruction, 2)
+    2
 }
 
 pub fn simulate(machine_code: &Vec<u8>) -> String {
@@ -307,7 +300,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
         let first_byte = machine_code[index];
         let opcode = get_opcode(first_byte);
 
-        let (_, index_increment) = match opcode {
+        let index_increment = match opcode {
             OpCode::RegisterImmediateMov => {
                 let word_byte: WordByte = ((first_byte & 0b00001000) >> 3).into();
                 let register_field = first_byte & 0b00000111;
@@ -328,7 +321,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
 
                 sim_state.set_register_value(register, immediate);
 
-                ("".to_owned(), index_increment)
+                index_increment
             }
             OpCode::MovMem => {
                 mem_mem_disassembly(OpCode::MovMem, &machine_code, index, &mut sim_state)
@@ -429,33 +422,37 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                     }
                 };
 
-                ("".to_owned(), index_increment)
+                index_increment
             }
-            OpCode::ImmediateToAccumulator => accumulator_arithmetic("add", &machine_code, index),
-            OpCode::ImmediateFromAccumulator => accumulator_arithmetic("sub", &machine_code, index),
+            OpCode::ImmediateToAccumulator => {
+                accumulator_arithmetic(OpCode::ImmediateToAccumulator, &machine_code, index)
+            }
+            OpCode::ImmediateFromAccumulator => {
+                accumulator_arithmetic(OpCode::ImmediateFromAccumulator, &machine_code, index)
+            }
             OpCode::CmpImmediateToAccumulator => {
-                accumulator_arithmetic("cmp", &machine_code, index)
+                accumulator_arithmetic(OpCode::CmpImmediateToAccumulator, &machine_code, index)
             }
-            OpCode::JneJnz => jump_opcode(&machine_code, index, "jnz"),
-            OpCode::Je => jump_opcode(&machine_code, index, "je"),
-            OpCode::Jl => jump_opcode(&machine_code, index, "jl"),
-            OpCode::Jle => jump_opcode(&machine_code, index, "jle"),
-            OpCode::Jb => jump_opcode(&machine_code, index, "jb"),
-            OpCode::Jbe => jump_opcode(&machine_code, index, "jbe"),
-            OpCode::Jp => jump_opcode(&machine_code, index, "jp"),
-            OpCode::Jo => jump_opcode(&machine_code, index, "jo"),
-            OpCode::Js => jump_opcode(&machine_code, index, "js"),
-            OpCode::Jnl => jump_opcode(&machine_code, index, "jnl"),
-            OpCode::Jg => jump_opcode(&machine_code, index, "jg"),
-            OpCode::Jnb => jump_opcode(&machine_code, index, "jnb"),
-            OpCode::Ja => jump_opcode(&machine_code, index, "ja"),
-            OpCode::Jnp => jump_opcode(&machine_code, index, "jnp"),
-            OpCode::Jno => jump_opcode(&machine_code, index, "jno"),
-            OpCode::Jns => jump_opcode(&machine_code, index, "jns"),
-            OpCode::Loop => jump_opcode(&machine_code, index, "loop"),
-            OpCode::Loopz => jump_opcode(&machine_code, index, "loopz"),
-            OpCode::Loopnz => jump_opcode(&machine_code, index, "loopnz"),
-            OpCode::Jcxz => jump_opcode(&machine_code, index, "jcxz"),
+            OpCode::JneJnz => jump_opcode(&machine_code, index, OpCode::JneJnz),
+            OpCode::Je => jump_opcode(&machine_code, index, OpCode::Je),
+            OpCode::Jl => jump_opcode(&machine_code, index, OpCode::Jl),
+            OpCode::Jle => jump_opcode(&machine_code, index, OpCode::Jle),
+            OpCode::Jb => jump_opcode(&machine_code, index, OpCode::Jb),
+            OpCode::Jbe => jump_opcode(&machine_code, index, OpCode::Jbe),
+            OpCode::Jp => jump_opcode(&machine_code, index, OpCode::Jp),
+            OpCode::Jo => jump_opcode(&machine_code, index, OpCode::Jo),
+            OpCode::Js => jump_opcode(&machine_code, index, OpCode::Js),
+            OpCode::Jnl => jump_opcode(&machine_code, index, OpCode::Jnl),
+            OpCode::Jg => jump_opcode(&machine_code, index, OpCode::Jg),
+            OpCode::Jnb => jump_opcode(&machine_code, index, OpCode::Jnb),
+            OpCode::Ja => jump_opcode(&machine_code, index, OpCode::Ja),
+            OpCode::Jnp => jump_opcode(&machine_code, index, OpCode::Jnp),
+            OpCode::Jno => jump_opcode(&machine_code, index, OpCode::Jno),
+            OpCode::Jns => jump_opcode(&machine_code, index, OpCode::Jns),
+            OpCode::Loop => jump_opcode(&machine_code, index, OpCode::Loop),
+            OpCode::Loopz => jump_opcode(&machine_code, index, OpCode::Loopz),
+            OpCode::Loopnz => jump_opcode(&machine_code, index, OpCode::Loopnz),
+            OpCode::Jcxz => jump_opcode(&machine_code, index, OpCode::Jcxz),
         };
 
         // remove newline from instruction
