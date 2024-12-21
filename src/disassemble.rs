@@ -242,22 +242,25 @@ fn get_immediate(
     high_byte_index: usize,
     word_byte: WordByte,
     sign_extension: u8,
-) -> (u16, usize) {
-    let byte_value = (machine_code[index + low_byte_index] as u16, 1);
+) -> (i32, usize) {
+    let byte_value = machine_code[index + low_byte_index] as i32;
 
     match word_byte {
-        WordByte::Byte => byte_value,
+        WordByte::Byte => (byte_value, 1),
         WordByte::Word => {
             if sign_extension == 0 {
                 (
                     concat_bytes(
                         machine_code[index + high_byte_index],
                         machine_code[index + low_byte_index],
-                    ),
+                    ) as i32,
                     2,
                 )
             } else {
-                byte_value
+                // interpret byte as a negative number for NASM
+                let neg_part = (byte_value & 0b10000000) as i32;
+                let pos_part = (byte_value & 0b01111111) as i32;
+                ((-1 * neg_part) + pos_part, 1)
             }
         }
     }
