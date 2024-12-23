@@ -409,7 +409,16 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
 
                         match arithmetic_code {
                             ArithmeticOpCode::Add => {
-                                let value = sim_state.get_register_value(register) + immediate;
+                                let value = if sign_extension == 0 {
+                                    sim_state.get_register_value(register) + immediate
+                                } else {
+                                    let neg_part = (immediate & 0x80) as i16;
+                                    let pos_part = (immediate & 0x7F) as i16;
+                                    let signed_result = (sim_state.get_register_value(register)
+                                        as i16)
+                                        + (-1 * neg_part + pos_part);
+                                    signed_result as u16
+                                };
                                 sim_state.set_register_value(register, value);
                                 sim_state.set_flags(value);
                             }
