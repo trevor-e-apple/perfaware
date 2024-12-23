@@ -143,14 +143,19 @@ impl SimulationState {
         );
 
         result.push_str("Flags: ");
-        if self.sign_flag {
-            result.push_str("S");
-        }
-        if self.zero_flag {
-            result.push_str("Z");
-        }
+        add_flags_string(self, &mut result);
 
         result
+    }
+}
+
+/// add flags string to the mutable string passed in as an argument
+fn add_flags_string(sim_state: &SimulationState, result: &mut String) {
+    if sim_state.sign_flag {
+        result.push_str("S");
+    }
+    if sim_state.zero_flag {
+        result.push_str("Z");
     }
 }
 
@@ -159,29 +164,38 @@ pub fn get_sim_state_diff(before: &SimulationState, after: &SimulationState) -> 
     let mut result = String::new();
 
     if before.ax != after.ax {
-        result.push_str(&format!("ax: {:#06X} -> {:#06X}\n", before.ax, after.ax));
+        result.push_str(&format!("ax: {:#06X} -> {:#06X} ", before.ax, after.ax));
     }
     if before.bx != after.bx {
-        result.push_str(&format!("bx: {:#06X} -> {:#06X}\n", before.bx, after.bx));
+        result.push_str(&format!("bx: {:#06X} -> {:#06X} ", before.bx, after.bx));
     }
     if before.cx != after.cx {
-        result.push_str(&format!("cx: {:#06X} -> {:#06X}\n", before.cx, after.cx));
+        result.push_str(&format!("cx: {:#06X} -> {:#06X} ", before.cx, after.cx));
     }
     if before.dx != after.dx {
-        result.push_str(&format!("dx: {:#06X} -> {:#06X}\n", before.dx, after.dx));
+        result.push_str(&format!("dx: {:#06X} -> {:#06X} ", before.dx, after.dx));
     }
     if before.sp != after.sp {
-        result.push_str(&format!("sp: {:#06X} -> {:#06X}\n", before.sp, after.sp));
+        result.push_str(&format!("sp: {:#06X} -> {:#06X} ", before.sp, after.sp));
     }
     if before.bp != after.bp {
-        result.push_str(&format!("bp: {:#06X} -> {:#06X}\n", before.bp, after.bp));
+        result.push_str(&format!("bp: {:#06X} -> {:#06X} ", before.bp, after.bp));
     }
     if before.si != after.si {
-        result.push_str(&format!("si: {:#06X} -> {:#06X}\n", before.si, after.si));
+        result.push_str(&format!("si: {:#06X} -> {:#06X} ", before.si, after.si));
     }
     if before.di != after.di {
-        result.push_str(&format!("di: {:#06X} -> {:#06X}\n", before.di, after.di));
+        result.push_str(&format!("di: {:#06X} -> {:#06X} ", before.di, after.di));
     }
+
+    if before.sign_flag != after.sign_flag || before.zero_flag != after.zero_flag {
+        result.push_str("Flags: ");
+        add_flags_string(&before, &mut result);
+        result.push_str(" -> ");
+        add_flags_string(&after, &mut result);
+    }
+
+    result.push_str("\n");
 
     result
 }
