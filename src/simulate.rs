@@ -292,6 +292,12 @@ fn jump_opcode(machine_code: &Vec<u8>, index: usize, operation: OpCode) -> usize
     2
 }
 
+fn interpret_u16_as_i16(a: u16) -> i16 {
+    let neg_part = (a & 0x80) as i16;
+    let pos_part = (a & 0x7F) as i16;
+    -1 * neg_part + pos_part
+}
+
 pub fn simulate(machine_code: &Vec<u8>) -> String {
     let mut sim_log = "".to_owned();
     let mut sim_state = SimulationState {
@@ -412,18 +418,23 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                                 let value = if sign_extension == 0 {
                                     sim_state.get_register_value(register) + immediate
                                 } else {
-                                    let neg_part = (immediate & 0x80) as i16;
-                                    let pos_part = (immediate & 0x7F) as i16;
                                     let signed_result = (sim_state.get_register_value(register)
                                         as i16)
-                                        + (-1 * neg_part + pos_part);
+                                        + interpret_u16_as_i16(immediate);
                                     signed_result as u16
                                 };
                                 sim_state.set_register_value(register, value);
                                 sim_state.set_flags(value);
                             }
                             ArithmeticOpCode::Sub => {
-                                let value = sim_state.get_register_value(register) - immediate;
+                                let value = if sign_extension == 0 {
+                                    sim_state.get_register_value(register) - immediate
+                                } else {
+                                    let signed_result = (sim_state.get_register_value(register)
+                                        as i16)
+                                        - interpret_u16_as_i16(immediate);
+                                    signed_result as u16
+                                };
                                 sim_state.set_register_value(register, value);
                                 sim_state.set_flags(value);
                             }
