@@ -439,7 +439,14 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                                 sim_state.set_flags(value);
                             }
                             ArithmeticOpCode::Cmp => {
-                                let value = sim_state.get_register_value(register) - immediate;
+                                let value = if sign_extension == 0 {
+                                    sim_state.get_register_value(register) - immediate
+                                } else {
+                                    let signed_result = (sim_state.get_register_value(register)
+                                        as i16)
+                                        - interpret_u16_as_i16(immediate);
+                                    signed_result as u16
+                                };
                                 sim_state.set_flags(value);
                             }
                         }
