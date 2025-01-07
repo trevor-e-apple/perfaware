@@ -196,7 +196,13 @@ pub fn mem_mem_disassembly(
                 OpCode::SubMemMem => {
                     let operand_value = sim_state.get_register_value(src_register);
                     let dest_value = sim_state.get_register_value(dest_register);
-                    let value = dest_value - operand_value;
+                    let value = if dest_value > operand_value {
+                        dest_value - operand_value
+                    } else {
+                        let diff = operand_value - dest_value;
+                        let low_bytes = 0b1000000000000000 - diff;
+                        0b1000000000000000 + low_bytes
+                    };
                     sim_state.set_register_value(dest_register, value);
                     sim_state.set_flags(value);
                 }

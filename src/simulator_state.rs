@@ -125,6 +125,7 @@ impl SimulationState {
                 "bp: {:#06X}({})\n",
                 "si: {:#06X}({})\n",
                 "di: {:#06X}({})\n",
+                "ip: {:#06X}({})\n",
             ),
             self.ax,
             self.ax,
@@ -141,7 +142,9 @@ impl SimulationState {
             self.si,
             self.si,
             self.di,
-            self.di
+            self.di,
+            self.ip,
+            self.ip,
         );
 
         result.push_str("Flags: ");
