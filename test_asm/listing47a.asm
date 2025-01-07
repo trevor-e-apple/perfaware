@@ -28,18 +28,12 @@ mov bx, -1
 cmp bx, 1 ; cmp negative to positive
 
 ;; registers
-; add two negative numbers
-; add positive to negative, negative result
-; add positive to negative, positive result
-; add negative to positive, negative result
-; add negative to positive, positive result
+; sub two negative numbers, negative result
+mov bx, -1
+mov cx, -2
+sub cx, bx
 
-; sub positive to negative, negative result
-; sub positive to negative, positive result
-; sub negative to positive, negative result
-; sub negative to positive, positive result
-
-; cmp positive to negative, negative result
-; cmp positive to negative, positive result
-; cmp negative to positive, negative result
-; cmp negative to positive, positive result
+; sub two negative numbers, positive result
+mov bx, -1
+mov cx, -2
+sub bx, cx
