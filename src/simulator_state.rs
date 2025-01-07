@@ -18,6 +18,8 @@ pub struct SimulationState {
 
     pub sign_flag: bool,
     pub zero_flag: bool,
+
+    pub ip: u16,
 }
 
 impl SimulationState {
@@ -186,6 +188,9 @@ pub fn get_sim_state_diff(before: &SimulationState, after: &SimulationState) -> 
     }
     if before.di != after.di {
         result.push_str(&format!("di: {:#06X} -> {:#06X} ", before.di, after.di));
+    }
+    if before.ip != after.ip {
+        result.push_str(&format!("ip: {:#06X} -> {:#06X} ", before.ip, after.ip));
     }
 
     if before.sign_flag != after.sign_flag || before.zero_flag != after.zero_flag {

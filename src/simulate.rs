@@ -304,15 +304,15 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
         ..Default::default()
     };
 
-    let mut index = 0;
-
-    while index < machine_code.len() {
+    while (sim_state.ip as usize) < machine_code.len() {
         let previous_state = sim_state.clone();
+
+        let index: usize = sim_state.ip as usize;
 
         let first_byte = machine_code[index];
         let opcode = get_opcode(first_byte);
 
-        let index_increment = match opcode {
+        let ip_offset = match opcode {
             OpCode::RegisterImmediateMov => {
                 let word_byte: WordByte = ((first_byte & 0b00001000) >> 3).into();
                 let register_field = first_byte & 0b00000111;
@@ -492,7 +492,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
         let (mut instruction, _) = get_instruction(machine_code, index);
         instruction.truncate(instruction.len() - 1);
 
-        index += index_increment;
+        sim_state.ip += ip_offset as u16;
 
         let state_diff = get_sim_state_diff(&previous_state, &sim_state);
         sim_log.push_str(&format!("{} ; {}", &instruction, state_diff));
