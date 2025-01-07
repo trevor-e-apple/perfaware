@@ -27,9 +27,6 @@ cmp bx, -1 ; cmp positive to negative
 mov bx, -1
 cmp bx, 1 ; cmp negative to positive
 
-; add large negative to large positive
-; add large positive to large negative
-
 ;; registers
 ; add two negative numbers
 ; add positive to negative, negative result
