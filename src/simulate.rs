@@ -294,9 +294,13 @@ fn get_jump_offset(machine_code: &Vec<u8>, index: usize) -> i8 {
     machine_code[index + 1] as i8 + 2
 }
 
-fn interpret_u16_as_i16(a: u16) -> i16 {
-    let neg_part = (a & 0x80) as i16;
-    let pos_part = (a & 0x7F) as i16;
+fn interpret_unsigned_as_signed(a: u16, bytes: usize) -> i16 {
+    let (neg_part, pos_part) = if bytes == 1 {
+        ((a & 0x80) as i16, (a & 0x7F) as i16)
+    } else {
+        ((a & 0x8000) as i16, (a & 0x7FFF) as i16)
+    };
+
     -1 * neg_part + pos_part
 }
 
@@ -406,7 +410,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                         let register = get_rm_register_field(second_byte, word_byte);
                         let low_byte_index = 2;
                         let high_byte_index = 3;
-                        let (immediate, data_increment) = get_immediate(
+                        let (immediate, immediate_bytes) = get_immediate(
                             &machine_code,
                             index,
                             low_byte_index,
@@ -420,9 +424,13 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                                 let value = if sign_extension == 0 {
                                     sim_state.get_register_value(register) + immediate
                                 } else {
-                                    let signed_result = interpret_u16_as_i16(
+                                    let signed_result = interpret_unsigned_as_signed(
                                         sim_state.get_register_value(register),
-                                    ) + interpret_u16_as_i16(immediate);
+                                        2,
+                                    ) + interpret_unsigned_as_signed(
+                                        immediate,
+                                        immediate_bytes,
+                                    );
                                     signed_result as u16
                                 };
                                 sim_state.set_register_value(register, value);
@@ -432,9 +440,13 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                                 let value = if sign_extension == 0 {
                                     sim_state.get_register_value(register) - immediate
                                 } else {
-                                    let signed_result = interpret_u16_as_i16(
+                                    let signed_result = interpret_unsigned_as_signed(
                                         sim_state.get_register_value(register),
-                                    ) - interpret_u16_as_i16(immediate);
+                                        2,
+                                    ) - interpret_unsigned_as_signed(
+                                        immediate,
+                                        immediate_bytes,
+                                    );
                                     signed_result as u16
                                 };
                                 sim_state.set_register_value(register, value);
@@ -444,16 +456,20 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                                 let value = if sign_extension == 0 {
                                     sim_state.get_register_value(register) - immediate
                                 } else {
-                                    let signed_result = interpret_u16_as_i16(
+                                    let signed_result = interpret_unsigned_as_signed(
                                         sim_state.get_register_value(register),
-                                    ) - interpret_u16_as_i16(immediate);
+                                        2,
+                                    ) - interpret_unsigned_as_signed(
+                                        immediate,
+                                        immediate_bytes,
+                                    );
                                     signed_result as u16
                                 };
                                 sim_state.set_flags(value);
                             }
                         }
 
-                        2 + data_increment
+                        2 + immediate_bytes
                     }
                 };
 

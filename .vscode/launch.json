@@ -69,6 +69,27 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Simulate listing 47",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=perfaware",
+                    "--package=perfaware",
+                ],
+                "filter": {
+                    "name": "perfaware",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "./test_asm/listing47.asm",
+                "--simulate"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Reassemble listing 47",
             "cargo": {
                 "args": [
