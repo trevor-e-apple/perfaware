@@ -120,7 +120,7 @@ pub fn mem_mem_disassembly(
     machine_code: &Vec<u8>,
     index: usize,
     sim_state: &mut SimulationState,
-) -> usize {
+) -> i8 {
     let first_byte = machine_code[index];
 
     let direction: Direction = ((first_byte & 0b00000010) >> 1).into();
@@ -225,14 +225,14 @@ pub fn mem_mem_disassembly(
         }
     };
 
-    index_increment
+    index_increment as i8
 }
 
 /// common function for accumulator arithmetic
 /// operation: the string for the operation. e.g. 'add', 'sub', 'cmp'
 /// machine_code: the vector containing the machine code
 /// index: the index for the first byte (containing the opcode)
-fn accumulator_arithmetic(operation: OpCode, machine_code: &Vec<u8>, index: usize) -> usize {
+fn accumulator_arithmetic(operation: OpCode, machine_code: &Vec<u8>, index: usize) -> i8 {
     let first_byte = machine_code[index];
 
     let word_byte: WordByte = (first_byte & 0b00000001).into();
@@ -247,7 +247,7 @@ fn accumulator_arithmetic(operation: OpCode, machine_code: &Vec<u8>, index: usiz
         }
     };
 
-    index_increment
+    index_increment as i8
 }
 
 /// Get the immediate from the instruction and return both it and the number of bytes in the immediate value
@@ -289,13 +289,9 @@ fn get_immediate(
 /// machine_code: the vector containing all of our machine code
 /// index: the index of the first byte of the instruction
 /// operation: the jump operation string
-fn jump_opcode(machine_code: &Vec<u8>, index: usize, operation: OpCode) -> usize {
-    // NOTE: if you were interested, you could pass in the opcode enum, convert it into a usize, and lookup
-    // -- into a table that includes all of the operation strings. You could then use pattern matching
-    // -- and inline this function into the different jump opcodes
-    let signed_displacement = machine_code[index + 1] as i8;
-
-    2
+fn get_jump_offset(machine_code: &Vec<u8>, index: usize) -> i8 {
+    // add 2 b/c ip register *should* be incremented before execution
+    machine_code[index + 1] as i8 + 2
 }
 
 fn interpret_u16_as_i16(a: u16) -> i16 {
@@ -318,7 +314,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
         let first_byte = machine_code[index];
         let opcode = get_opcode(first_byte);
 
-        let ip_offset = match opcode {
+        let ip_offset: i8 = match opcode {
             OpCode::RegisterImmediateMov => {
                 let word_byte: WordByte = ((first_byte & 0b00001000) >> 3).into();
                 let register_field = first_byte & 0b00000111;
@@ -461,7 +457,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                     }
                 };
 
-                index_increment
+                index_increment as i8
             }
             OpCode::ImmediateToAccumulator => {
                 accumulator_arithmetic(OpCode::ImmediateToAccumulator, &machine_code, index)
@@ -472,33 +468,39 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
             OpCode::CmpImmediateToAccumulator => {
                 accumulator_arithmetic(OpCode::CmpImmediateToAccumulator, &machine_code, index)
             }
-            OpCode::JneJnz => jump_opcode(&machine_code, index, OpCode::JneJnz),
-            OpCode::Je => jump_opcode(&machine_code, index, OpCode::Je),
-            OpCode::Jl => jump_opcode(&machine_code, index, OpCode::Jl),
-            OpCode::Jle => jump_opcode(&machine_code, index, OpCode::Jle),
-            OpCode::Jb => jump_opcode(&machine_code, index, OpCode::Jb),
-            OpCode::Jbe => jump_opcode(&machine_code, index, OpCode::Jbe),
-            OpCode::Jp => jump_opcode(&machine_code, index, OpCode::Jp),
-            OpCode::Jo => jump_opcode(&machine_code, index, OpCode::Jo),
-            OpCode::Js => jump_opcode(&machine_code, index, OpCode::Js),
-            OpCode::Jnl => jump_opcode(&machine_code, index, OpCode::Jnl),
-            OpCode::Jg => jump_opcode(&machine_code, index, OpCode::Jg),
-            OpCode::Jnb => jump_opcode(&machine_code, index, OpCode::Jnb),
-            OpCode::Ja => jump_opcode(&machine_code, index, OpCode::Ja),
-            OpCode::Jnp => jump_opcode(&machine_code, index, OpCode::Jnp),
-            OpCode::Jno => jump_opcode(&machine_code, index, OpCode::Jno),
-            OpCode::Jns => jump_opcode(&machine_code, index, OpCode::Jns),
-            OpCode::Loop => jump_opcode(&machine_code, index, OpCode::Loop),
-            OpCode::Loopz => jump_opcode(&machine_code, index, OpCode::Loopz),
-            OpCode::Loopnz => jump_opcode(&machine_code, index, OpCode::Loopnz),
-            OpCode::Jcxz => jump_opcode(&machine_code, index, OpCode::Jcxz),
+            OpCode::JneJnz => {
+                if !sim_state.zero_flag {
+                    get_jump_offset(&machine_code, index)
+                } else {
+                    2
+                }
+            }
+            OpCode::Je => unimplemented!(),
+            OpCode::Jl => unimplemented!(),
+            OpCode::Jle => unimplemented!(),
+            OpCode::Jb => unimplemented!(),
+            OpCode::Jbe => unimplemented!(),
+            OpCode::Jp => unimplemented!(),
+            OpCode::Jo => unimplemented!(),
+            OpCode::Js => unimplemented!(),
+            OpCode::Jnl => unimplemented!(),
+            OpCode::Jg => unimplemented!(),
+            OpCode::Jnb => unimplemented!(),
+            OpCode::Ja => unimplemented!(),
+            OpCode::Jnp => unimplemented!(),
+            OpCode::Jno => unimplemented!(),
+            OpCode::Jns => unimplemented!(),
+            OpCode::Loop => unimplemented!(),
+            OpCode::Loopz => unimplemented!(),
+            OpCode::Loopnz => unimplemented!(),
+            OpCode::Jcxz => unimplemented!(),
         };
 
         // remove newline from instruction
         let (mut instruction, _) = get_instruction(machine_code, index);
         instruction.truncate(instruction.len() - 1);
 
-        sim_state.ip += ip_offset as u16;
+        sim_state.ip = ((sim_state.ip as i16) + (ip_offset as i16)) as u16;
 
         let state_diff = get_sim_state_diff(&previous_state, &sim_state);
         sim_log.push_str(&format!("{} ; {}", &instruction, state_diff));
