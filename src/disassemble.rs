@@ -311,6 +311,9 @@ pub fn get_instruction(machine_code: &Vec<u8>, index: usize) -> (String, usize) 
 
             (instruction, index_increment)
         }
+        OpCode::ImmediateToMem => {
+            todo!()
+        }
         OpCode::MovMem => mem_mem_disassembly(OpCode::MovMem, machine_code, index),
         OpCode::AddMemMem => mem_mem_disassembly(OpCode::AddMemMem, machine_code, index),
         OpCode::SubMemMem => mem_mem_disassembly(OpCode::SubMemMem, machine_code, index),

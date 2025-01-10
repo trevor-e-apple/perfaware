@@ -4,7 +4,7 @@ use crate::common_assembly::{
     ArithmeticOpCode, Direction, Mode, OpCode, WordByte,
 };
 use crate::disassemble::get_instruction;
-use crate::simulator_state::{get_sim_state_diff, SimulationState};
+use crate::simulator_state::{get_sim_state_diff, SimMem, SimulationState};
 
 /// Returns a string and the number of bytes in the displacement for a no-displacement mov
 /// rm_field: the rm_field
@@ -309,6 +309,9 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
     let mut sim_state = SimulationState {
         ..Default::default()
     };
+    let mut sim_mem = SimMem {
+        ..Default::default()
+    };
 
     while (sim_state.ip as usize) < machine_code.len() {
         let previous_state = sim_state.clone();
@@ -340,6 +343,9 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                 sim_state.set_register_value(register, immediate);
 
                 index_increment
+            }
+            OpCode::ImmediateToMem => {
+                todo!()
             }
             OpCode::MovMem => {
                 mem_mem_disassembly(OpCode::MovMem, &machine_code, index, &mut sim_state)

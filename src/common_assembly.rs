@@ -14,6 +14,9 @@ pub enum OpCode {
     ImmediateFromAccumulator = 0b00101100,
     CmpImmediateToAccumulator = 0b00111100,
 
+    // 7 bit op codes
+    ImmediateToMem = 0b11000110,
+
     // 8 bit opcodes
     JneJnz = 0b01110101,
     Je = 0b01110100,
@@ -63,6 +66,11 @@ pub fn get_opcode(byte: u8) -> OpCode {
         return OpCode::CmpMemMem;
     } else if first_six_bits == (OpCode::CmpImmediateToAccumulator as u8) {
         return OpCode::CmpImmediateToAccumulator;
+    }
+
+    let first_seven_bits = byte & 0b11111110;
+    if first_seven_bits == (OpCode::ImmediateToMem as u8) {
+        return OpCode::ImmediateToMem;
     }
 
     if byte == (OpCode::JneJnz as u8) {

@@ -22,6 +22,11 @@ pub struct SimulationState {
     pub ip: u16,
 }
 
+#[derive(Default)]
+pub struct SimMem {
+    pub mem: Vec<u8>,
+}
+
 impl SimulationState {
     pub fn get_register_value(&self, register: Register) -> u16 {
         match register {
