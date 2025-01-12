@@ -312,7 +312,80 @@ pub fn get_instruction(machine_code: &Vec<u8>, index: usize) -> (String, usize) 
             (instruction, index_increment)
         }
         OpCode::ImmediateToMem => {
-            todo!()
+            let word_byte: WordByte = (first_byte & 0b00000001).into();
+            let word_byte_string = match word_byte {
+                WordByte::Byte => "byte".to_owned(),
+                WordByte::Word => "word".to_owned(),
+            };
+
+            let second_byte = machine_code[index + 1];
+
+            let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
+
+            let (dest_arg, immediate, index_increment) = match mode {
+                Mode::MemNoDisplacement => {
+                    let rm_field = second_byte & 0b00000111;
+
+                    let (address_calculation, displacement_bytes) =
+                        no_displacement_address_arithmetic(rm_field, machine_code, index);
+
+                    // 2 bytes + displacment bytes is the low data byte
+                    let low_byte_index = 2 + displacement_bytes;
+                    // 2 bytes + displacment bytes + 1 low byte + 1 is the high data byte
+                    let high_byte_index = 3 + displacement_bytes;
+
+                    let (immediate, data_increment) = get_immediate(
+                        machine_code,
+                        index,
+                        low_byte_index,
+                        high_byte_index,
+                        word_byte,
+                        0,
+                    );
+
+                    (
+                        format!("{} {}", word_byte_string, address_calculation),
+                        immediate,
+                        2 + displacement_bytes + data_increment,
+                    )
+                }
+                Mode::Mem8BitDisplacement => {
+                    let rm_field = second_byte & 0b0000111;
+                    let displacement = machine_code[index + 2];
+                    let address_calculation = rm_field_to_displacement(rm_field, displacement);
+
+                    let (immediate, data_increment) =
+                        get_immediate(&machine_code, index, 3, 4, word_byte, 0);
+
+                    (
+                        format!("{} {}", word_byte_string, address_calculation),
+                        immediate,
+                        3 + data_increment,
+                    )
+                }
+                Mode::Mem16BitDisplacement => {
+                    let rm_field = second_byte & 0b0000111;
+                    let displacement =
+                        concat_bytes(machine_code[index + 3], machine_code[index + 2]);
+                    let address_calculation = rm_field_to_displacement(rm_field, displacement);
+
+                    let (immediate, data_increment) =
+                        get_immediate(&machine_code, index, 4, 5, word_byte, 0);
+
+                    (
+                        format!("{} {}", word_byte_string, address_calculation),
+                        immediate,
+                        4 + data_increment,
+                    )
+                }
+                Mode::Register => {
+                    panic!("Unexpected register mode when moving to memory")
+                }
+            };
+
+            let instruction = format!("mov {}, {}\n", dest_arg, immediate);
+
+            (instruction, index_increment)
         }
         OpCode::MovMem => mem_mem_disassembly(OpCode::MovMem, machine_code, index),
         OpCode::AddMemMem => mem_mem_disassembly(OpCode::AddMemMem, machine_code, index),
