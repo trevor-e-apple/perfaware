@@ -13,6 +13,7 @@ pub fn no_displacement_address(
     rm_field: u8,
     machine_code: &Vec<u8>,
     index: usize,
+    word_byte: WordByte,
 ) -> (String, usize) {
     if rm_field == 0b000 {
         ("[bx + si]".to_owned(), 0)
@@ -36,7 +37,10 @@ pub fn no_displacement_address(
             None => panic!("Failed to fetch high byte for direct address"),
         };
         let displacement = concat_bytes(high_byte, low_byte);
-        (format!("{}", displacement), 2)
+        match word_byte {
+            WordByte::Byte => (format!("byte [{}]", displacement), 2),
+            WordByte::Word => (format!("word [{}]", displacement), 2),
+        }
     } else if rm_field == 0b111 {
         ("bx".to_owned(), 0)
     } else {
@@ -141,7 +145,7 @@ pub fn mem_mem_disassembly(
             let rm_field = second_byte & 0b00000111;
 
             let (address_calculation, displacement_byte_count) =
-                no_displacement_address(rm_field, &machine_code, index);
+                no_displacement_address(rm_field, &machine_code, index, word_byte);
 
             let (dest, source) = match direction {
                 Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
