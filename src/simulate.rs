@@ -52,24 +52,30 @@ pub fn no_displacement_address(
 /// rm_field: the rm_field
 /// machine_code: the machine code vector
 /// index: The index of the opcode-containing byte
-/// returns: the string for the address and the number of bytes in the displacement (direct address case only)
+/// returns: the usize for the address and the number of bytes in the displacement (direct address case only)
 pub fn no_displacement_address_arithmetic(
     rm_field: u8,
     machine_code: &Vec<u8>,
     index: usize,
-) -> (String, usize) {
+) -> (usize, usize) {
     if rm_field == 0b000 {
-        ("[bx + si]".to_owned(), 0)
+        // ("[bx + si]".to_owned(), 0)
+        todo!()
     } else if rm_field == 0b001 {
-        ("[bx + di]".to_owned(), 0)
+        // ("[bx + di]".to_owned(), 0)
+        todo!()
     } else if rm_field == 0b010 {
-        ("[bp + si]".to_owned(), 0)
+        // ("[bp + si]".to_owned(), 0)
+        todo!()
     } else if rm_field == 0b011 {
-        ("[bp + di]".to_owned(), 0)
+        // ("[bp + di]".to_owned(), 0)
+        todo!()
     } else if rm_field == 0b100 {
-        ("[si]".to_owned(), 0)
+        // ("[si]".to_owned(), 0)
+        todo!()
     } else if rm_field == 0b101 {
-        ("[di]".to_owned(), 0)
+        // ("[di]".to_owned(), 0)
+        todo!()
     } else if rm_field == 0b110 {
         let low_byte = match machine_code.get(index + 2) {
             Some(low_byte) => *low_byte,
@@ -80,9 +86,10 @@ pub fn no_displacement_address_arithmetic(
             None => panic!("Failed to fetch high byte for direct address"),
         };
         let displacement = concat_bytes(high_byte, low_byte);
-        (format!("[{}]", displacement), 2)
+        (displacement as usize, 2)
     } else if rm_field == 0b111 {
-        ("[bx]".to_owned(), 0)
+        // ("[bx]".to_owned(), 0)
+        todo!()
     } else {
         panic!("Bad rm field")
     }
@@ -91,23 +98,31 @@ pub fn no_displacement_address_arithmetic(
 /// Takes the rm_field and returns the corresponding displacement address
 /// rm_field: the rm_field
 /// displacement: The displacement from the address
-pub fn rm_field_to_displacement<T: std::fmt::Display>(rm_field: u8, displacement: T) -> String {
+pub fn rm_field_to_displacement<T: std::fmt::Display>(rm_field: u8, displacement: T) -> usize {
     if rm_field == 0b000 {
-        format!("[bx + si + {}]", displacement)
+        // format!("[bx + si + {}]", displacement)
+        todo!()
     } else if rm_field == 0b001 {
-        format!("[bx + di + {}]", displacement)
+        // format!("[bx + di + {}]", displacement)
+        todo!()
     } else if rm_field == 0b010 {
-        format!("[bp + si + {}]", displacement)
+        // format!("[bp + si + {}]", displacement)
+        todo!()
     } else if rm_field == 0b011 {
-        format!("[bp + di + {}]", displacement)
+        // format!("[bp + di + {}]", displacement)
+        todo!()
     } else if rm_field == 0b100 {
-        format!("[si + {}]", displacement)
+        // format!("[si + {}]", displacement)
+        todo!()
     } else if rm_field == 0b101 {
-        format!("[di + {}]", displacement)
+        // format!("[di + {}]", displacement)
+        todo!()
     } else if rm_field == 0b110 {
-        format!("[bp + {}]", displacement)
+        // format!("[bp + {}]", displacement)
+        todo!()
     } else if rm_field == 0b111 {
-        format!("[bx + {}]", displacement)
+        // format!("[bx + {}]", displacement)
+        todo!()
     } else {
         panic!("Bad rm field")
     }
@@ -138,10 +153,10 @@ pub fn mem_mem_disassembly(
             let (address_calculation, displacement_byte_count) =
                 no_displacement_address(rm_field, &machine_code, index);
 
-            let (dest, source) = match direction {
-                Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
-                Direction::RmReg => (register_to_assembly_name(register), address_calculation),
-            };
+            // let (dest, source) = match direction {
+            //     Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
+            //     Direction::RmReg => (register_to_assembly_name(register), address_calculation),
+            // };
 
             // format!("{} {}, {}\n", assembly_mnemonic, dest, source),
             2 + displacement_byte_count
@@ -151,10 +166,10 @@ pub fn mem_mem_disassembly(
             let displacement = machine_code[index + 2];
             let address_calculation = rm_field_to_displacement(rm_field, displacement);
 
-            let (dest, source) = match direction {
-                Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
-                Direction::RmReg => (register_to_assembly_name(register), address_calculation),
-            };
+            // let (dest, source) = match direction {
+            //     Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
+            //     Direction::RmReg => (register_to_assembly_name(register), address_calculation),
+            // };
 
             // format!("{} {}, {}\n", assembly_mnemonic, dest, source),
             3
@@ -164,10 +179,10 @@ pub fn mem_mem_disassembly(
             let displacement = concat_bytes(machine_code[index + 3], machine_code[index + 2]);
             let address_calculation = rm_field_to_displacement(rm_field, displacement);
 
-            let (dest, source) = match direction {
-                Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
-                Direction::RmReg => (register_to_assembly_name(register), address_calculation),
-            };
+            // let (dest, source) = match direction {
+            //     Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
+            //     Direction::RmReg => (register_to_assembly_name(register), address_calculation),
+            // };
 
             // format!("{} {}, {}\n", assembly_mnemonic, dest, source),
             4
@@ -345,7 +360,78 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                 index_increment
             }
             OpCode::ImmediateToMem => {
-                todo!()
+                let word_byte: WordByte = (first_byte & 0b00000001).into();
+
+                let second_byte = machine_code[index + 1];
+
+                let mode: Mode = ((second_byte & 0b11000000) >> 6).into();
+
+                let (dest_arg, immediate, index_increment) = match mode {
+                    Mode::MemNoDisplacement => {
+                        let rm_field = second_byte & 0b00000111;
+
+                        let (address_calculation, displacement_bytes) =
+                            no_displacement_address_arithmetic(rm_field, machine_code, index);
+
+                        // 2 bytes + displacment bytes is the low data byte
+                        let low_byte_index = 2 + displacement_bytes;
+                        // 2 bytes + displacment bytes + 1 low byte + 1 is the high data byte
+                        let high_byte_index = 3 + displacement_bytes;
+
+                        let (immediate, data_increment) = get_immediate(
+                            machine_code,
+                            index,
+                            low_byte_index,
+                            high_byte_index,
+                            word_byte,
+                            0,
+                        );
+
+                        (
+                            address_calculation,
+                            immediate,
+                            2 + displacement_bytes + data_increment,
+                        )
+                    }
+                    Mode::Mem8BitDisplacement => {
+                        let rm_field = second_byte & 0b0000111;
+                        let displacement = machine_code[index + 2];
+                        let address_calculation = rm_field_to_displacement(rm_field, displacement);
+
+                        let (immediate, data_increment) =
+                            get_immediate(&machine_code, index, 3, 4, word_byte, 0);
+
+                        (address_calculation, immediate, 3 + data_increment)
+                    }
+                    Mode::Mem16BitDisplacement => {
+                        let rm_field = second_byte & 0b0000111;
+                        let displacement =
+                            concat_bytes(machine_code[index + 3], machine_code[index + 2]);
+                        let address_calculation = rm_field_to_displacement(rm_field, displacement);
+
+                        let (immediate, data_increment) =
+                            get_immediate(&machine_code, index, 4, 5, word_byte, 0);
+
+                        (address_calculation, immediate, 4 + data_increment)
+                    }
+                    Mode::Register => {
+                        panic!("Unexpected register mode when moving to memory")
+                    }
+                };
+
+                // let instruction = format!("mov {}, {}\n", dest_arg, immediate);
+
+                match word_byte {
+                    WordByte::Byte => {
+                        sim_mem.mem[dest_arg] = immediate as u8;
+                    }
+                    WordByte::Word => {
+                        sim_mem.mem[dest_arg] = (immediate & 0xFF) as u8;
+                        sim_mem.mem[dest_arg + 1] = ((immediate & 0xFF00) >> 8) as u8;
+                    }
+                }
+
+                index_increment as i8
             }
             OpCode::MovMem => {
                 mem_mem_disassembly(OpCode::MovMem, &machine_code, index, &mut sim_state)
