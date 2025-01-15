@@ -22,11 +22,6 @@ pub struct SimulationState {
     pub ip: u16,
 }
 
-#[derive(Default)]
-pub struct SimMem {
-    pub mem: Vec<u8>,
-}
-
 impl SimulationState {
     pub fn get_register_value(&self, register: Register) -> u16 {
         match register {
@@ -211,4 +206,17 @@ pub fn get_sim_state_diff(before: &SimulationState, after: &SimulationState) -> 
     result.push_str("\n");
 
     result
+}
+
+#[derive(Default)]
+pub struct SimMem {
+    pub mem: Vec<u8>,
+}
+
+impl SimMem {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            mem: vec![0; capacity],
+        }
+    }
 }

@@ -98,31 +98,27 @@ pub fn no_displacement_address_arithmetic(
 /// Takes the rm_field and returns the corresponding displacement address
 /// rm_field: the rm_field
 /// displacement: The displacement from the address
-pub fn rm_field_to_displacement<T: std::fmt::Display>(rm_field: u8, displacement: T) -> usize {
+pub fn rm_field_to_displacement<T: std::fmt::Display>(
+    sim_state: &SimulationState,
+    rm_field: u8,
+    displacement: u16,
+) -> usize {
     if rm_field == 0b000 {
-        // format!("[bx + si + {}]", displacement)
-        todo!()
+        (sim_state.bx + sim_state.si + displacement) as usize
     } else if rm_field == 0b001 {
-        // format!("[bx + di + {}]", displacement)
-        todo!()
+        (sim_state.bx + sim_state.di + displacement) as usize
     } else if rm_field == 0b010 {
-        // format!("[bp + si + {}]", displacement)
-        todo!()
+        (sim_state.bp + sim_state.si + displacement) as usize
     } else if rm_field == 0b011 {
-        // format!("[bp + di + {}]", displacement)
-        todo!()
+        (sim_state.bp + sim_state.di + displacement) as usize
     } else if rm_field == 0b100 {
-        // format!("[si + {}]", displacement)
-        todo!()
+        (sim_state.si + displacement) as usize
     } else if rm_field == 0b101 {
-        // format!("[di + {}]", displacement)
-        todo!()
+        (sim_state.di + displacement) as usize
     } else if rm_field == 0b110 {
-        // format!("[bp + {}]", displacement)
-        todo!()
+        (sim_state.bp + displacement) as usize
     } else if rm_field == 0b111 {
-        // format!("[bx + {}]", displacement)
-        todo!()
+        (sim_state.bx + displacement) as usize
     } else {
         panic!("Bad rm field")
     }
@@ -324,9 +320,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
     let mut sim_state = SimulationState {
         ..Default::default()
     };
-    let mut sim_mem = SimMem {
-        ..Default::default()
-    };
+    let mut sim_mem = SimMem::new(2 << 20);
 
     while (sim_state.ip as usize) < machine_code.len() {
         let previous_state = sim_state.clone();
