@@ -10,24 +10,31 @@ use crate::simulator_state::{get_sim_state_diff, SimMem, SimulationState};
 /// rm_field: the rm_field
 /// machine_code: the machine code vector
 /// index: The index of the opcode-containing byte
-/// returns: the string for the address and the number of bytes in the displacement (direct address case only)
+/// returns: the memory address and the number of bytes in the displacement
 pub fn no_displacement_address(
+    sim_state: &SimulationState,
     rm_field: u8,
     machine_code: &Vec<u8>,
     index: usize,
-) -> (String, usize) {
+) -> (usize, usize) {
     if rm_field == 0b000 {
-        ("[bx + si]".to_owned(), 0)
+        // ("[bx + si]".to_owned(), 0)
+        ((sim_state.bx + sim_state.si) as usize, 0)
     } else if rm_field == 0b001 {
-        ("[bx + di]".to_owned(), 0)
+        // ("[bx + di]".to_owned(), 0)
+        ((sim_state.bx + sim_state.di) as usize, 0)
     } else if rm_field == 0b010 {
-        ("[bp + si]".to_owned(), 0)
+        // ("[bp + si]".to_owned(), 0)
+        ((sim_state.bp + sim_state.si) as usize, 0)
     } else if rm_field == 0b011 {
-        ("[bp + di]".to_owned(), 0)
+        // ("[bp + di]".to_owned(), 0)
+        ((sim_state.bp + sim_state.di) as usize, 0)
     } else if rm_field == 0b100 {
-        ("si".to_owned(), 0)
+        // ("si".to_owned(), 0)
+        (sim_state.si as usize, 0)
     } else if rm_field == 0b101 {
-        ("di".to_owned(), 0)
+        // ("di".to_owned(), 0)
+        (sim_state.di as usize, 0)
     } else if rm_field == 0b110 {
         let low_byte = match machine_code.get(index + 2) {
             Some(low_byte) => *low_byte,
@@ -38,9 +45,10 @@ pub fn no_displacement_address(
             None => panic!("Failed to fetch high byte for direct address"),
         };
         let displacement = concat_bytes(high_byte, low_byte);
-        (format!("{}", displacement), 2)
+        (displacement as usize, 2)
     } else if rm_field == 0b111 {
-        ("bx".to_owned(), 0)
+        // ("bx".to_owned(), 0)
+        (sim_state.bx as usize, 0)
     } else {
         panic!("Bad rm field")
     }
@@ -98,7 +106,7 @@ pub fn no_displacement_address_arithmetic(
 /// Takes the rm_field and returns the corresponding displacement address
 /// rm_field: the rm_field
 /// displacement: The displacement from the address
-pub fn rm_field_to_displacement<T: std::fmt::Display>(
+pub fn rm_field_to_displacement(
     sim_state: &SimulationState,
     rm_field: u8,
     displacement: u16,
@@ -147,7 +155,7 @@ pub fn mem_mem_disassembly(
             let rm_field = second_byte & 0b00000111;
 
             let (address_calculation, displacement_byte_count) =
-                no_displacement_address(rm_field, &machine_code, index);
+                no_displacement_address(&sim_state, rm_field, &machine_code, index);
 
             // let (dest, source) = match direction {
             //     Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
@@ -160,7 +168,8 @@ pub fn mem_mem_disassembly(
         Mode::Mem8BitDisplacement => {
             let rm_field = second_byte & 0b0000111;
             let displacement = machine_code[index + 2];
-            let address_calculation = rm_field_to_displacement(rm_field, displacement);
+            let address_calculation =
+                rm_field_to_displacement(&sim_state, rm_field, displacement as u16);
 
             // let (dest, source) = match direction {
             //     Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
@@ -173,7 +182,7 @@ pub fn mem_mem_disassembly(
         Mode::Mem16BitDisplacement => {
             let rm_field = second_byte & 0b0000111;
             let displacement = concat_bytes(machine_code[index + 3], machine_code[index + 2]);
-            let address_calculation = rm_field_to_displacement(rm_field, displacement);
+            let address_calculation = rm_field_to_displacement(&sim_state, rm_field, displacement);
 
             // let (dest, source) = match direction {
             //     Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
@@ -390,7 +399,8 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                     Mode::Mem8BitDisplacement => {
                         let rm_field = second_byte & 0b0000111;
                         let displacement = machine_code[index + 2];
-                        let address_calculation = rm_field_to_displacement(rm_field, displacement);
+                        let address_calculation =
+                            rm_field_to_displacement(&sim_state, rm_field, displacement as u16);
 
                         let (immediate, data_increment) =
                             get_immediate(&machine_code, index, 3, 4, word_byte, 0);
@@ -401,7 +411,8 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                         let rm_field = second_byte & 0b0000111;
                         let displacement =
                             concat_bytes(machine_code[index + 3], machine_code[index + 2]);
-                        let address_calculation = rm_field_to_displacement(rm_field, displacement);
+                        let address_calculation =
+                            rm_field_to_displacement(&sim_state, rm_field, displacement);
 
                         let (immediate, data_increment) =
                             get_immediate(&machine_code, index, 4, 5, word_byte, 0);
@@ -474,7 +485,8 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                     Mode::Mem8BitDisplacement => {
                         let rm_field = second_byte & 0b0000111;
                         let displacement = machine_code[index + 2];
-                        let address_calculation = rm_field_to_displacement(rm_field, displacement);
+                        let address_calculation =
+                            rm_field_to_displacement(&sim_state, rm_field, displacement as u16);
 
                         let (immediate, data_increment) =
                             get_immediate(&machine_code, index, 3, 4, word_byte, sign_extension);
@@ -485,7 +497,8 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                         let rm_field = second_byte & 0b0000111;
                         let displacement =
                             concat_bytes(machine_code[index + 3], machine_code[index + 2]);
-                        let address_calculation = rm_field_to_displacement(rm_field, displacement);
+                        let address_calculation =
+                            rm_field_to_displacement(&sim_state, rm_field, displacement);
 
                         let (immediate, data_increment) =
                             get_immediate(&machine_code, index, 4, 5, word_byte, sign_extension);
