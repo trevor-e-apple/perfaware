@@ -153,6 +153,27 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Simulate listing 51",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=perfaware",
+                    "--package=perfaware",
+                ],
+                "filter": {
+                    "name": "perfaware",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "./test_asm/listing51.asm",
+                "--simulate"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug unit tests in executable 'perfaware'",
             "cargo": {
                 "args": [

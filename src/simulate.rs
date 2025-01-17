@@ -139,6 +139,7 @@ pub fn mem_mem_disassembly(
     machine_code: &Vec<u8>,
     index: usize,
     sim_state: &mut SimulationState,
+    sim_mem: &mut SimMem,
 ) -> i8 {
     let first_byte = machine_code[index];
 
@@ -157,6 +158,30 @@ pub fn mem_mem_disassembly(
             let (address_calculation, displacement_byte_count) =
                 no_displacement_address(&sim_state, rm_field, &machine_code, index);
 
+            match direction {
+                Direction::RegRm => match word_byte {
+                    WordByte::Byte => {
+                        sim_mem.mem[address_calculation] =
+                            sim_state.get_register_value(register) as u8
+                    }
+                    WordByte::Word => {
+                        let register_value: u16 = sim_state.get_register_value(register);
+                        sim_mem.mem[address_calculation] = (register_value & 0xFF) as u8;
+                        sim_mem.mem[address_calculation + 1] = (register_value & 0xFF00) as u8;
+                    }
+                },
+                Direction::RmReg => match word_byte {
+                    WordByte::Byte => {
+                        sim_state
+                            .set_register_value(register, sim_mem.mem[address_calculation] as u16);
+                    }
+                    WordByte::Word => {
+                        let value: u16 = (sim_mem.mem[address_calculation] << 8) as u16
+                            + sim_mem.mem[address_calculation] as u16;
+                        sim_state.set_register_value(register, value);
+                    }
+                },
+            }
             // let (dest, source) = match direction {
             //     Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
             //     Direction::RmReg => (register_to_assembly_name(register), address_calculation),
