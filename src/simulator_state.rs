@@ -95,7 +95,6 @@ impl SimulationState {
             Register::Di => {
                 self.di = value;
             }
-            _ => {} // not simulated
         };
     }
 

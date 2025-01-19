@@ -1,7 +1,7 @@
 use crate::byte_operations::concat_bytes;
 use crate::common_assembly::{
-    get_opcode, get_register_enum, get_rm_register_field, register_to_assembly_name,
-    ArithmeticOpCode, Direction, Mode, OpCode, Register, WordByte,
+    get_opcode, get_register_enum, get_rm_register_field, ArithmeticOpCode, Direction, Mode,
+    OpCode, Register, WordByte,
 };
 use crate::disassemble::get_instruction;
 use crate::simulator_state::{get_sim_state_diff, SimMem, SimulationState};
@@ -295,11 +295,11 @@ fn mem_mem_disassembly(
 /// operation: the string for the operation. e.g. 'add', 'sub', 'cmp'
 /// machine_code: the vector containing the machine code
 /// index: the index for the first byte (containing the opcode)
-fn accumulator_arithmetic(operation: OpCode, machine_code: &Vec<u8>, index: usize) -> i8 {
+fn accumulator_arithmetic(_operation: OpCode, machine_code: &Vec<u8>, index: usize) -> i8 {
     let first_byte = machine_code[index];
 
     let word_byte: WordByte = (first_byte & 0b00000001).into();
-    let (data, register, index_increment) = match word_byte {
+    let (_, _, index_increment) = match word_byte {
         WordByte::Byte => {
             let data = machine_code[index + 1] as u16;
             (data, "al", 2)
@@ -522,7 +522,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                     Mode::MemNoDisplacement => {
                         let rm_field = second_byte & 0b00000111;
 
-                        let (address_calculation, displacement_bytes) =
+                        let (_, displacement_bytes) =
                             no_displacement_address_arithmetic(rm_field, &machine_code, index);
 
                         // 2 bytes + displacment bytes is the low data byte
@@ -530,7 +530,7 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                         // 2 bytes + displacment bytes + 1 low byte + 1 is the high data byte
                         let high_byte_index = 3 + displacement_bytes;
 
-                        let (immediate, data_increment) = get_immediate(
+                        let (_, data_increment) = get_immediate(
                             &machine_code,
                             index,
                             low_byte_index,
@@ -544,10 +544,9 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                     Mode::Mem8BitDisplacement => {
                         let rm_field = second_byte & 0b0000111;
                         let displacement = machine_code[index + 2];
-                        let address_calculation =
-                            rm_field_to_displacement(&sim_state, rm_field, displacement as u16);
+                        let _ = rm_field_to_displacement(&sim_state, rm_field, displacement as u16);
 
-                        let (immediate, data_increment) =
+                        let (_, data_increment) =
                             get_immediate(&machine_code, index, 3, 4, word_byte, sign_extension);
 
                         3 + data_increment
@@ -556,10 +555,9 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
                         let rm_field = second_byte & 0b0000111;
                         let displacement =
                             concat_bytes(machine_code[index + 3], machine_code[index + 2]);
-                        let address_calculation =
-                            rm_field_to_displacement(&sim_state, rm_field, displacement);
+                        let _ = rm_field_to_displacement(&sim_state, rm_field, displacement);
 
-                        let (immediate, data_increment) =
+                        let (_, data_increment) =
                             get_immediate(&machine_code, index, 4, 5, word_byte, sign_extension);
 
                         4 + data_increment
