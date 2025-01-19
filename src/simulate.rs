@@ -176,18 +176,13 @@ pub fn mem_mem_disassembly(
                             .set_register_value(register, sim_mem.mem[address_calculation] as u16);
                     }
                     WordByte::Word => {
-                        let value: u16 = (sim_mem.mem[address_calculation] << 8) as u16
+                        let value: u16 = ((sim_mem.mem[address_calculation + 1] as u16) << 8)
                             + sim_mem.mem[address_calculation] as u16;
                         sim_state.set_register_value(register, value);
                     }
                 },
             }
-            // let (dest, source) = match direction {
-            //     Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
-            //     Direction::RmReg => (register_to_assembly_name(register), address_calculation),
-            // };
 
-            // format!("{} {}, {}\n", assembly_mnemonic, dest, source),
             2 + displacement_byte_count
         }
         Mode::Mem8BitDisplacement => {
@@ -463,18 +458,34 @@ pub fn simulate(machine_code: &Vec<u8>) -> String {
 
                 index_increment as i8
             }
-            OpCode::MovMem => {
-                mem_mem_disassembly(OpCode::MovMem, &machine_code, index, &mut sim_state)
-            }
-            OpCode::AddMemMem => {
-                mem_mem_disassembly(OpCode::AddMemMem, &machine_code, index, &mut sim_state)
-            }
-            OpCode::SubMemMem => {
-                mem_mem_disassembly(OpCode::SubMemMem, &machine_code, index, &mut sim_state)
-            }
-            OpCode::CmpMemMem => {
-                mem_mem_disassembly(OpCode::CmpMemMem, &machine_code, index, &mut sim_state)
-            }
+            OpCode::MovMem => mem_mem_disassembly(
+                OpCode::MovMem,
+                &machine_code,
+                index,
+                &mut sim_state,
+                &mut sim_mem,
+            ),
+            OpCode::AddMemMem => mem_mem_disassembly(
+                OpCode::AddMemMem,
+                &machine_code,
+                index,
+                &mut sim_state,
+                &mut sim_mem,
+            ),
+            OpCode::SubMemMem => mem_mem_disassembly(
+                OpCode::SubMemMem,
+                &machine_code,
+                index,
+                &mut sim_state,
+                &mut sim_mem,
+            ),
+            OpCode::CmpMemMem => mem_mem_disassembly(
+                OpCode::CmpMemMem,
+                &machine_code,
+                index,
+                &mut sim_state,
+                &mut sim_mem,
+            ),
             OpCode::ImmediateArithmetic => {
                 let word_byte: WordByte = (first_byte & 0b00000001).into();
 
