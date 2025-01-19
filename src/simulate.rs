@@ -1,7 +1,7 @@
 use crate::byte_operations::concat_bytes;
 use crate::common_assembly::{
     get_opcode, get_register_enum, get_rm_register_field, register_to_assembly_name,
-    ArithmeticOpCode, Direction, Mode, OpCode, WordByte,
+    ArithmeticOpCode, Direction, Mode, OpCode, Register, WordByte,
 };
 use crate::disassemble::get_instruction;
 use crate::simulator_state::{get_sim_state_diff, SimMem, SimulationState};
@@ -132,9 +132,41 @@ pub fn rm_field_to_displacement(
     }
 }
 
+fn simulate_mem_mem(
+    sim_state: &mut SimulationState,
+    sim_mem: &mut SimMem,
+    direction: Direction,
+    word_byte: WordByte,
+    address_calculation: usize,
+    register: Register,
+) {
+    match direction {
+        Direction::RegRm => match word_byte {
+            WordByte::Byte => {
+                sim_mem.mem[address_calculation] = sim_state.get_register_value(register) as u8
+            }
+            WordByte::Word => {
+                let register_value: u16 = sim_state.get_register_value(register);
+                sim_mem.mem[address_calculation] = (register_value & 0xFF) as u8;
+                sim_mem.mem[address_calculation + 1] = (register_value & 0xFF00) as u8;
+            }
+        },
+        Direction::RmReg => match word_byte {
+            WordByte::Byte => {
+                sim_state.set_register_value(register, sim_mem.mem[address_calculation] as u16);
+            }
+            WordByte::Word => {
+                let value: u16 = ((sim_mem.mem[address_calculation + 1] as u16) << 8)
+                    + sim_mem.mem[address_calculation] as u16;
+                sim_state.set_register_value(register, value);
+            }
+        },
+    }
+}
+
 /// get the disassembly string and the number of bytes that were a part of the instruction for
 /// any disassembly with the form [opcode:6 d:1 w:1] [mod:2 reg:3 rm:3] [disp-lo] [disp-hi]
-pub fn mem_mem_disassembly(
+fn mem_mem_disassembly(
     opcode: OpCode,
     machine_code: &Vec<u8>,
     index: usize,
@@ -158,30 +190,14 @@ pub fn mem_mem_disassembly(
             let (address_calculation, displacement_byte_count) =
                 no_displacement_address(&sim_state, rm_field, &machine_code, index);
 
-            match direction {
-                Direction::RegRm => match word_byte {
-                    WordByte::Byte => {
-                        sim_mem.mem[address_calculation] =
-                            sim_state.get_register_value(register) as u8
-                    }
-                    WordByte::Word => {
-                        let register_value: u16 = sim_state.get_register_value(register);
-                        sim_mem.mem[address_calculation] = (register_value & 0xFF) as u8;
-                        sim_mem.mem[address_calculation + 1] = (register_value & 0xFF00) as u8;
-                    }
-                },
-                Direction::RmReg => match word_byte {
-                    WordByte::Byte => {
-                        sim_state
-                            .set_register_value(register, sim_mem.mem[address_calculation] as u16);
-                    }
-                    WordByte::Word => {
-                        let value: u16 = ((sim_mem.mem[address_calculation + 1] as u16) << 8)
-                            + sim_mem.mem[address_calculation] as u16;
-                        sim_state.set_register_value(register, value);
-                    }
-                },
-            }
+            simulate_mem_mem(
+                sim_state,
+                sim_mem,
+                direction,
+                word_byte,
+                address_calculation,
+                register,
+            );
 
             2 + displacement_byte_count
         }
@@ -191,12 +207,15 @@ pub fn mem_mem_disassembly(
             let address_calculation =
                 rm_field_to_displacement(&sim_state, rm_field, displacement as u16);
 
-            // let (dest, source) = match direction {
-            //     Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
-            //     Direction::RmReg => (register_to_assembly_name(register), address_calculation),
-            // };
+            simulate_mem_mem(
+                sim_state,
+                sim_mem,
+                direction,
+                word_byte,
+                address_calculation,
+                register,
+            );
 
-            // format!("{} {}, {}\n", assembly_mnemonic, dest, source),
             3
         }
         Mode::Mem16BitDisplacement => {
@@ -204,12 +223,15 @@ pub fn mem_mem_disassembly(
             let displacement = concat_bytes(machine_code[index + 3], machine_code[index + 2]);
             let address_calculation = rm_field_to_displacement(&sim_state, rm_field, displacement);
 
-            // let (dest, source) = match direction {
-            //     Direction::RegRm => (address_calculation, register_to_assembly_name(register)),
-            //     Direction::RmReg => (register_to_assembly_name(register), address_calculation),
-            // };
+            simulate_mem_mem(
+                sim_state,
+                sim_mem,
+                direction,
+                word_byte,
+                address_calculation,
+                register,
+            );
 
-            // format!("{} {}, {}\n", assembly_mnemonic, dest, source),
             4
         }
         Mode::Register => {
@@ -249,13 +271,14 @@ pub fn mem_mem_disassembly(
                 OpCode::CmpMemMem => {
                     let operand_value = sim_state.get_register_value(src_register);
                     let dest_value = sim_state.get_register_value(dest_register);
-                    let value = if dest_value > operand_value {
+                    let value = if dest_value >= operand_value {
                         dest_value - operand_value
                     } else {
                         let diff = operand_value - dest_value;
                         let low_bytes = 0b1000000000000000 - diff;
                         0b1000000000000000 + low_bytes
                     };
+
                     sim_state.set_flags(value);
                 }
                 _ => panic!("Unexpected opcode for mem to mem instruction"),
